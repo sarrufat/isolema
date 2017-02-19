@@ -48,4 +48,5 @@ define('resources/index',["require", "exports"], function (require, exports) {
 });
 
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n  <h1>${message}</h1>\n</template>\n"; });
+define('text!app.css', ['module'], function(module) { module.exports = ".page-host {\r\n  position: absolute;\r\n  left: 0;\r\n  right: 0;\r\n  top: 50px;\r\n  bottom: 0;\r\n  overflow-x: hidden;\r\n  overflow-y: auto;\r\n}\r\n"; });
 //# sourceMappingURL=app-bundle.js.map
