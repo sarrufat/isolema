@@ -47,5 +47,5 @@ define('resources/index',["require", "exports"], function (require, exports) {
     exports.configure = configure;
 });
 
-define('text!app.html', ['module'], function(module) { module.exports = "<template><h1>${message}</h1></template>"; });
+define('text!app.html', ['module'], function(module) { module.exports = "<template>\n  <h1>${message}</h1>\n</template>\n"; });
 //# sourceMappingURL=app-bundle.js.map
