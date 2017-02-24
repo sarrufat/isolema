@@ -5,6 +5,9 @@ import * as project from '../aurelia.json';
 import build from './build';
 import {CLIOptions} from 'aurelia-cli';
 
+var proxy = require('proxy-middleware');
+var url = require('url');
+
 function onChange(path) {
   console.log(`File Changed: ${path}`);
 }
@@ -13,6 +16,14 @@ function reload(done) {
   browserSync.reload();
   done();
 }
+
+var proxyOptionsAccessControl = function(req,res, next){
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        next();
+  };
+
+  var proxyOptionsApiRoute = url.parse('http://localhost:' + 3000 +  '/api') ;
+ proxyOptionsApiRoute.route = '/api';
 
 let serve = gulp.series(
   build,
@@ -24,10 +35,7 @@ let serve = gulp.series(
       logLevel: 'silent',
       server: {
         baseDir: ['.'],
-        middleware: [historyApiFallback(), function(req, res, next) {
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          next();
-        }]
+        middleware: [historyApiFallback(), proxyOptionsAccessControl, proxy(proxyOptionsApiRoute)]
       }
     }, function (err, bs) {
       let urls = bs.options.get('urls').toJS();

@@ -3738,7 +3738,7 @@ module.exports = ret;
 },{"./es5":10}]},{},[3])(3)
 });                    ;if (typeof window !== 'undefined' && window !== null) {                               window.P = window.Promise;                                                     } else if (typeof self !== 'undefined' && self !== null) {                             self.P = self.Promise;                                                         }
 /** vim: et:ts=4:sw=4:sts=4
- * @license RequireJS 2.3.2 Copyright jQuery Foundation and other contributors.
+ * @license RequireJS 2.3.3 Copyright jQuery Foundation and other contributors.
  * Released under MIT license, https://github.com/requirejs/requirejs/blob/master/LICENSE
  */
 //Not using strict: uneven strict support in browsers, #392, and causes
@@ -3750,7 +3750,7 @@ var requirejs, require, define;
 (function (global, setTimeout) {
     var req, s, head, baseElement, dataMain, src,
         interactiveScript, currentlyAddingScript, mainScript, subPath,
-        version = '2.3.2',
+        version = '2.3.3',
         commentRegExp = /\/\*[\s\S]*?\*\/|([^:"'=]|^)\/\/.*$/mg,
         cjsRequireRegExp = /[^.]\s*require\s*\(\s*["']([^'"\s]+)["']\s*\)/g,
         jsSuffixRegExp = /\.js$/,
@@ -4179,7 +4179,9 @@ var requirejs, require, define;
             //Account for relative paths if there is a base name.
             if (name) {
                 if (prefix) {
-                    if (pluginModule && pluginModule.normalize) {
+                    if (isNormalized) {
+                        normalizedName = name;
+                    } else if (pluginModule && pluginModule.normalize) {
                         //Plugin is loaded, use its normalize method.
                         normalizedName = pluginModule.normalize(name, function (name) {
                             return normalize(name, parentName, applyMap);
@@ -4711,7 +4713,8 @@ var requirejs, require, define;
                         //prefix and name should already be normalized, no need
                         //for applying map config again either.
                         normalizedMap = makeModuleMap(map.prefix + '!' + name,
-                                                      this.map.parentMap);
+                                                      this.map.parentMap,
+                                                      true);
                         on(normalizedMap,
                             'defined', bind(this, function (value) {
                                 this.map.normalizedMap = normalizedMap;
@@ -12429,6 +12432,263 @@ define('aurelia-event-aggregator',['exports', 'aurelia-logging'], function (expo
     config.instance(EventAggregator, includeEventsIn(config.aurelia));
   }
 });
+define('aurelia-fetch-client',['exports'], function (exports) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.json = json;
+
+  var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+    return typeof obj;
+  } : function (obj) {
+    return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj;
+  };
+
+  
+
+  function json(body) {
+    return new Blob([JSON.stringify(body)], { type: 'application/json' });
+  }
+
+  var HttpClientConfiguration = exports.HttpClientConfiguration = function () {
+    function HttpClientConfiguration() {
+      
+
+      this.baseUrl = '';
+      this.defaults = {};
+      this.interceptors = [];
+    }
+
+    HttpClientConfiguration.prototype.withBaseUrl = function withBaseUrl(baseUrl) {
+      this.baseUrl = baseUrl;
+      return this;
+    };
+
+    HttpClientConfiguration.prototype.withDefaults = function withDefaults(defaults) {
+      this.defaults = defaults;
+      return this;
+    };
+
+    HttpClientConfiguration.prototype.withInterceptor = function withInterceptor(interceptor) {
+      this.interceptors.push(interceptor);
+      return this;
+    };
+
+    HttpClientConfiguration.prototype.useStandardConfiguration = function useStandardConfiguration() {
+      var standardConfig = { credentials: 'same-origin' };
+      Object.assign(this.defaults, standardConfig, this.defaults);
+      return this.rejectErrorResponses();
+    };
+
+    HttpClientConfiguration.prototype.rejectErrorResponses = function rejectErrorResponses() {
+      return this.withInterceptor({ response: rejectOnError });
+    };
+
+    return HttpClientConfiguration;
+  }();
+
+  function rejectOnError(response) {
+    if (!response.ok) {
+      throw response;
+    }
+
+    return response;
+  }
+
+  var HttpClient = exports.HttpClient = function () {
+    function HttpClient() {
+      
+
+      this.activeRequestCount = 0;
+      this.isRequesting = false;
+      this.isConfigured = false;
+      this.baseUrl = '';
+      this.defaults = null;
+      this.interceptors = [];
+
+      if (typeof fetch === 'undefined') {
+        throw new Error('HttpClient requires a Fetch API implementation, but the current environment doesn\'t support it. You may need to load a polyfill such as https://github.com/github/fetch.');
+      }
+    }
+
+    HttpClient.prototype.configure = function configure(config) {
+      var normalizedConfig = void 0;
+
+      if ((typeof config === 'undefined' ? 'undefined' : _typeof(config)) === 'object') {
+        normalizedConfig = { defaults: config };
+      } else if (typeof config === 'function') {
+        normalizedConfig = new HttpClientConfiguration();
+        normalizedConfig.baseUrl = this.baseUrl;
+        normalizedConfig.defaults = Object.assign({}, this.defaults);
+        normalizedConfig.interceptors = this.interceptors;
+
+        var c = config(normalizedConfig);
+        if (HttpClientConfiguration.prototype.isPrototypeOf(c)) {
+          normalizedConfig = c;
+        }
+      } else {
+        throw new Error('invalid config');
+      }
+
+      var defaults = normalizedConfig.defaults;
+      if (defaults && Headers.prototype.isPrototypeOf(defaults.headers)) {
+        throw new Error('Default headers must be a plain object.');
+      }
+
+      this.baseUrl = normalizedConfig.baseUrl;
+      this.defaults = defaults;
+      this.interceptors = normalizedConfig.interceptors || [];
+      this.isConfigured = true;
+
+      return this;
+    };
+
+    HttpClient.prototype.fetch = function (_fetch) {
+      function fetch(_x, _x2) {
+        return _fetch.apply(this, arguments);
+      }
+
+      fetch.toString = function () {
+        return _fetch.toString();
+      };
+
+      return fetch;
+    }(function (input, init) {
+      var _this = this;
+
+      trackRequestStart.call(this);
+
+      var request = Promise.resolve().then(function () {
+        return buildRequest.call(_this, input, init, _this.defaults);
+      });
+      var promise = processRequest(request, this.interceptors).then(function (result) {
+        var response = null;
+
+        if (Response.prototype.isPrototypeOf(result)) {
+          response = result;
+        } else if (Request.prototype.isPrototypeOf(result)) {
+          request = Promise.resolve(result);
+          response = fetch(result);
+        } else {
+          throw new Error('An invalid result was returned by the interceptor chain. Expected a Request or Response instance, but got [' + result + ']');
+        }
+
+        return request.then(function (_request) {
+          return processResponse(response, _this.interceptors, _request);
+        });
+      });
+
+      return trackRequestEndWith.call(this, promise);
+    });
+
+    return HttpClient;
+  }();
+
+  var absoluteUrlRegexp = /^([a-z][a-z0-9+\-.]*:)?\/\//i;
+
+  function trackRequestStart() {
+    this.isRequesting = !! ++this.activeRequestCount;
+  }
+
+  function trackRequestEnd() {
+    this.isRequesting = !! --this.activeRequestCount;
+  }
+
+  function trackRequestEndWith(promise) {
+    var handle = trackRequestEnd.bind(this);
+    promise.then(handle, handle);
+    return promise;
+  }
+
+  function parseHeaderValues(headers) {
+    var parsedHeaders = {};
+    for (var name in headers || {}) {
+      if (headers.hasOwnProperty(name)) {
+        parsedHeaders[name] = typeof headers[name] === 'function' ? headers[name]() : headers[name];
+      }
+    }
+    return parsedHeaders;
+  }
+
+  function buildRequest(input, init) {
+    var defaults = this.defaults || {};
+    var request = void 0;
+    var body = void 0;
+    var requestContentType = void 0;
+
+    var parsedDefaultHeaders = parseHeaderValues(defaults.headers);
+    if (Request.prototype.isPrototypeOf(input)) {
+      request = input;
+      requestContentType = new Headers(request.headers).get('Content-Type');
+    } else {
+      init || (init = {});
+      body = init.body;
+      var bodyObj = body ? { body: body } : null;
+      var requestInit = Object.assign({}, defaults, { headers: {} }, init, bodyObj);
+      requestContentType = new Headers(requestInit.headers).get('Content-Type');
+      request = new Request(getRequestUrl(this.baseUrl, input), requestInit);
+    }
+    if (!requestContentType && new Headers(parsedDefaultHeaders).has('content-type')) {
+      request.headers.set('Content-Type', new Headers(parsedDefaultHeaders).get('content-type'));
+    }
+    setDefaultHeaders(request.headers, parsedDefaultHeaders);
+    if (body && Blob.prototype.isPrototypeOf(body) && body.type) {
+      request.headers.set('Content-Type', body.type);
+    }
+    return request;
+  }
+
+  function getRequestUrl(baseUrl, url) {
+    if (absoluteUrlRegexp.test(url)) {
+      return url;
+    }
+
+    return (baseUrl || '') + url;
+  }
+
+  function setDefaultHeaders(headers, defaultHeaders) {
+    for (var name in defaultHeaders || {}) {
+      if (defaultHeaders.hasOwnProperty(name) && !headers.has(name)) {
+        headers.set(name, defaultHeaders[name]);
+      }
+    }
+  }
+
+  function processRequest(request, interceptors) {
+    return applyInterceptors(request, interceptors, 'request', 'requestError');
+  }
+
+  function processResponse(response, interceptors, request) {
+    return applyInterceptors(response, interceptors, 'response', 'responseError', request);
+  }
+
+  function applyInterceptors(input, interceptors, successName, errorName) {
+    for (var _len = arguments.length, interceptorArgs = Array(_len > 4 ? _len - 4 : 0), _key = 4; _key < _len; _key++) {
+      interceptorArgs[_key - 4] = arguments[_key];
+    }
+
+    return (interceptors || []).reduce(function (chain, interceptor) {
+      var successHandler = interceptor[successName];
+      var errorHandler = interceptor[errorName];
+
+      return chain.then(successHandler && function (value) {
+        return successHandler.call.apply(successHandler, [interceptor, value].concat(interceptorArgs));
+      } || identity, errorHandler && function (reason) {
+        return errorHandler.call.apply(errorHandler, [interceptor, reason].concat(interceptorArgs));
+      } || thrower);
+    }, Promise.resolve(input));
+  }
+
+  function identity(x) {
+    return x;
+  }
+
+  function thrower(x) {
+    throw x;
+  }
+});
 define('aurelia-framework',['exports', 'aurelia-dependency-injection', 'aurelia-binding', 'aurelia-metadata', 'aurelia-templating', 'aurelia-loader', 'aurelia-task-queue', 'aurelia-path', 'aurelia-pal', 'aurelia-logging'], function (exports, _aureliaDependencyInjection, _aureliaBinding, _aureliaMetadata, _aureliaTemplating, _aureliaLoader, _aureliaTaskQueue, _aureliaPath, _aureliaPal, _aureliaLogging) {
   'use strict';
 
@@ -13729,7 +13989,9 @@ define('aurelia-loader-default',['exports', 'aurelia-loader', 'aurelia-pal', 'au
     };
 
     DefaultLoader.prototype.map = function (id, source) {
-      System.map[id] = source;
+      var _map;
+
+      System.config({ map: (_map = {}, _map[id] = source, _map) });
     };
 
     DefaultLoader.prototype.normalizeSync = function (moduleId, relativeTo) {
@@ -13768,6 +14030,7 @@ define('aurelia-logging',['exports'], function (exports) {
   });
   exports.getLogger = getLogger;
   exports.addAppender = addAppender;
+  exports.removeAppender = removeAppender;
   exports.setLevel = setLevel;
   exports.getLevel = getLevel;
 
@@ -13783,85 +14046,52 @@ define('aurelia-logging',['exports'], function (exports) {
 
   var loggers = {};
   var appenders = [];
-  var slice = Array.prototype.slice;
-  var loggerConstructionKey = {};
   var globalDefaultLevel = logLevel.none;
 
-  function log(logger, level, args) {
-    var i = appenders.length;
-    var current = void 0;
-
-    args = slice.call(args);
-    args.unshift(logger);
-
-    while (i--) {
-      current = appenders[i];
-      current[level].apply(current, args);
-    }
+  function appendArgs() {
+    return [this].concat(Array.prototype.slice.call(arguments));
   }
 
-  function debug() {
-    if (this.level < 4) {
-      return;
-    }
+  function logFactory(level) {
+    var threshold = logLevel[level];
+    return function () {
+      if (this.level < threshold) {
+        return;
+      }
 
-    log(this, 'debug', arguments);
+      var args = appendArgs.apply(this, arguments);
+      var i = appenders.length;
+      while (i--) {
+        var _appenders$i;
+
+        (_appenders$i = appenders[i])[level].apply(_appenders$i, args);
+      }
+    };
   }
 
-  function info() {
-    if (this.level < 3) {
-      return;
-    }
-
-    log(this, 'info', arguments);
-  }
-
-  function warn() {
-    if (this.level < 2) {
-      return;
-    }
-
-    log(this, 'warn', arguments);
-  }
-
-  function error() {
-    if (this.level < 1) {
-      return;
-    }
-
-    log(this, 'error', arguments);
-  }
-
-  function connectLogger(logger) {
-    logger.debug = debug;
-    logger.info = info;
-    logger.warn = warn;
-    logger.error = error;
-  }
-
-  function createLogger(id) {
-    var logger = new Logger(id, loggerConstructionKey);
-    logger.setLevel(globalDefaultLevel);
-
-    if (appenders.length) {
-      connectLogger(logger);
-    }
-
-    return logger;
+  function connectLoggers() {
+    Object.assign(Logger.prototype, {
+      debug: logFactory('debug'),
+      info: logFactory('info'),
+      warn: logFactory('warn'),
+      error: logFactory('error')
+    });
   }
 
   function getLogger(id) {
-    return loggers[id] || (loggers[id] = createLogger(id));
+    return loggers[id] || new Logger(id);
   }
 
   function addAppender(appender) {
-    appenders.push(appender);
-
-    if (appenders.length === 1) {
-      for (var key in loggers) {
-        connectLogger(loggers[key]);
-      }
+    if (appenders.push(appender) === 1) {
+      connectLoggers();
     }
+  }
+
+  function removeAppender(appender) {
+    appenders = appenders.filter(function (a) {
+      return a !== appender;
+    });
   }
 
   function setLevel(level) {
@@ -13876,16 +14106,17 @@ define('aurelia-logging',['exports'], function (exports) {
   }
 
   var Logger = exports.Logger = function () {
-    function Logger(id, key) {
+    function Logger(id) {
       
 
-      this.level = logLevel.none;
-
-      if (key !== loggerConstructionKey) {
-        throw new Error('Cannot instantiate "Logger". Use "getLogger" instead.');
+      var cached = loggers[id];
+      if (cached) {
+        return cached;
       }
 
+      loggers[id] = this;
       this.id = id;
+      this.level = globalDefaultLevel;
     }
 
     Logger.prototype.debug = function debug(message) {};
@@ -15082,266 +15313,273 @@ define('aurelia-polyfills',['aurelia-pal'], function (_aureliaPal) {
     return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj;
   };
 
-  (function (Object, GOPS) {
-    'use strict';
+  if (typeof FEATURE_NO_ES2015 === 'undefined') {
 
-    if (GOPS in Object) return;
+    (function (Object, GOPS) {
+      'use strict';
 
-    var setDescriptor,
-        G = _aureliaPal.PLATFORM.global,
-        id = 0,
-        random = '' + Math.random(),
-        prefix = '__\x01symbol:',
-        prefixLength = prefix.length,
-        internalSymbol = '__\x01symbol@@' + random,
-        DP = 'defineProperty',
-        DPies = 'defineProperties',
-        GOPN = 'getOwnPropertyNames',
-        GOPD = 'getOwnPropertyDescriptor',
-        PIE = 'propertyIsEnumerable',
-        gOPN = Object[GOPN],
-        gOPD = Object[GOPD],
-        create = Object.create,
-        keys = Object.keys,
-        defineProperty = Object[DP],
-        $defineProperties = Object[DPies],
-        descriptor = gOPD(Object, GOPN),
-        ObjectProto = Object.prototype,
-        hOP = ObjectProto.hasOwnProperty,
-        pIE = ObjectProto[PIE],
-        toString = ObjectProto.toString,
-        indexOf = Array.prototype.indexOf || function (v) {
-      for (var i = this.length; i-- && this[i] !== v;) {}
-      return i;
-    },
-        addInternalIfNeeded = function addInternalIfNeeded(o, uid, enumerable) {
-      if (!hOP.call(o, internalSymbol)) {
-        defineProperty(o, internalSymbol, {
-          enumerable: false,
-          configurable: false,
-          writable: false,
-          value: {}
-        });
-      }
-      o[internalSymbol]['@@' + uid] = enumerable;
-    },
-        createWithSymbols = function createWithSymbols(proto, descriptors) {
-      var self = create(proto);
-      gOPN(descriptors).forEach(function (key) {
-        if (propertyIsEnumerable.call(descriptors, key)) {
-          $defineProperty(self, key, descriptors[key]);
-        }
-      });
-      return self;
-    },
-        copyAsNonEnumerable = function copyAsNonEnumerable(descriptor) {
-      var newDescriptor = create(descriptor);
-      newDescriptor.enumerable = false;
-      return newDescriptor;
-    },
-        get = function get() {},
-        onlyNonSymbols = function onlyNonSymbols(name) {
-      return name != internalSymbol && !hOP.call(source, name);
-    },
-        onlySymbols = function onlySymbols(name) {
-      return name != internalSymbol && hOP.call(source, name);
-    },
-        propertyIsEnumerable = function propertyIsEnumerable(key) {
-      var uid = '' + key;
-      return onlySymbols(uid) ? hOP.call(this, uid) && this[internalSymbol]['@@' + uid] : pIE.call(this, key);
-    },
-        setAndGetSymbol = function setAndGetSymbol(uid) {
-      var descriptor = {
-        enumerable: false,
-        configurable: true,
-        get: get,
-        set: function set(value) {
-          setDescriptor(this, uid, {
+      if (GOPS in Object) return;
+
+      var setDescriptor,
+          G = _aureliaPal.PLATFORM.global,
+          id = 0,
+          random = '' + Math.random(),
+          prefix = '__\x01symbol:',
+          prefixLength = prefix.length,
+          internalSymbol = '__\x01symbol@@' + random,
+          DP = 'defineProperty',
+          DPies = 'defineProperties',
+          GOPN = 'getOwnPropertyNames',
+          GOPD = 'getOwnPropertyDescriptor',
+          PIE = 'propertyIsEnumerable',
+          gOPN = Object[GOPN],
+          gOPD = Object[GOPD],
+          create = Object.create,
+          keys = Object.keys,
+          defineProperty = Object[DP],
+          $defineProperties = Object[DPies],
+          descriptor = gOPD(Object, GOPN),
+          ObjectProto = Object.prototype,
+          hOP = ObjectProto.hasOwnProperty,
+          pIE = ObjectProto[PIE],
+          toString = ObjectProto.toString,
+          indexOf = Array.prototype.indexOf || function (v) {
+        for (var i = this.length; i-- && this[i] !== v;) {}
+        return i;
+      },
+          addInternalIfNeeded = function addInternalIfNeeded(o, uid, enumerable) {
+        if (!hOP.call(o, internalSymbol)) {
+          defineProperty(o, internalSymbol, {
             enumerable: false,
-            configurable: true,
-            writable: true,
-            value: value
+            configurable: false,
+            writable: false,
+            value: {}
           });
-          addInternalIfNeeded(this, uid, true);
         }
-      };
-      defineProperty(ObjectProto, uid, descriptor);
-      return source[uid] = defineProperty(Object(uid), 'constructor', sourceConstructor);
-    },
-        _Symbol = function _Symbol2(description) {
-      if (this && this !== G) {
-        throw new TypeError('Symbol is not a constructor');
-      }
-      return setAndGetSymbol(prefix.concat(description || '', random, ++id));
-    },
-        source = create(null),
-        sourceConstructor = { value: _Symbol },
-        sourceMap = function sourceMap(uid) {
-      return source[uid];
-    },
-        $defineProperty = function defineProp(o, key, descriptor) {
-      var uid = '' + key;
-      if (onlySymbols(uid)) {
-        setDescriptor(o, uid, descriptor.enumerable ? copyAsNonEnumerable(descriptor) : descriptor);
-        addInternalIfNeeded(o, uid, !!descriptor.enumerable);
-      } else {
-        defineProperty(o, key, descriptor);
-      }
-      return o;
-    },
-        $getOwnPropertySymbols = function getOwnPropertySymbols(o) {
-      var cof = toString.call(o);
-      o = cof === '[object String]' ? o.split('') : Object(o);
-      return gOPN(o).filter(onlySymbols).map(sourceMap);
-    };
-
-    descriptor.value = $defineProperty;
-    defineProperty(Object, DP, descriptor);
-
-    descriptor.value = $getOwnPropertySymbols;
-    defineProperty(Object, GOPS, descriptor);
-
-    descriptor.value = function getOwnPropertyNames(o) {
-      return gOPN(o).filter(onlyNonSymbols);
-    };
-    defineProperty(Object, GOPN, descriptor);
-
-    descriptor.value = function defineProperties(o, descriptors) {
-      var symbols = $getOwnPropertySymbols(descriptors);
-      if (symbols.length) {
-        keys(descriptors).concat(symbols).forEach(function (uid) {
-          if (propertyIsEnumerable.call(descriptors, uid)) {
-            $defineProperty(o, uid, descriptors[uid]);
+        o[internalSymbol]['@@' + uid] = enumerable;
+      },
+          createWithSymbols = function createWithSymbols(proto, descriptors) {
+        var self = create(proto);
+        gOPN(descriptors).forEach(function (key) {
+          if (propertyIsEnumerable.call(descriptors, key)) {
+            $defineProperty(self, key, descriptors[key]);
           }
         });
-      } else {
-        $defineProperties(o, descriptors);
-      }
-      return o;
-    };
-    defineProperty(Object, DPies, descriptor);
-
-    descriptor.value = propertyIsEnumerable;
-    defineProperty(ObjectProto, PIE, descriptor);
-
-    descriptor.value = _Symbol;
-    defineProperty(G, 'Symbol', descriptor);
-
-    descriptor.value = function (key) {
-      var uid = prefix.concat(prefix, key, random);
-      return uid in ObjectProto ? source[uid] : setAndGetSymbol(uid);
-    };
-    defineProperty(_Symbol, 'for', descriptor);
-
-    descriptor.value = function (symbol) {
-      return hOP.call(source, symbol) ? symbol.slice(prefixLength * 2, -random.length) : void 0;
-    };
-    defineProperty(_Symbol, 'keyFor', descriptor);
-
-    descriptor.value = function getOwnPropertyDescriptor(o, key) {
-      var descriptor = gOPD(o, key);
-      if (descriptor && onlySymbols(key)) {
-        descriptor.enumerable = propertyIsEnumerable.call(o, key);
-      }
-      return descriptor;
-    };
-    defineProperty(Object, GOPD, descriptor);
-
-    descriptor.value = function (proto, descriptors) {
-      return arguments.length === 1 ? create(proto) : createWithSymbols(proto, descriptors);
-    };
-    defineProperty(Object, 'create', descriptor);
-
-    descriptor.value = function () {
-      var str = toString.call(this);
-      return str === '[object String]' && onlySymbols(this) ? '[object Symbol]' : str;
-    };
-    defineProperty(ObjectProto, 'toString', descriptor);
-
-    try {
-      setDescriptor = create(defineProperty({}, prefix, {
-        get: function get() {
-          return defineProperty(this, prefix, { value: false })[prefix];
+        return self;
+      },
+          copyAsNonEnumerable = function copyAsNonEnumerable(descriptor) {
+        var newDescriptor = create(descriptor);
+        newDescriptor.enumerable = false;
+        return newDescriptor;
+      },
+          get = function get() {},
+          onlyNonSymbols = function onlyNonSymbols(name) {
+        return name != internalSymbol && !hOP.call(source, name);
+      },
+          onlySymbols = function onlySymbols(name) {
+        return name != internalSymbol && hOP.call(source, name);
+      },
+          propertyIsEnumerable = function propertyIsEnumerable(key) {
+        var uid = '' + key;
+        return onlySymbols(uid) ? hOP.call(this, uid) && this[internalSymbol]['@@' + uid] : pIE.call(this, key);
+      },
+          setAndGetSymbol = function setAndGetSymbol(uid) {
+        var descriptor = {
+          enumerable: false,
+          configurable: true,
+          get: get,
+          set: function set(value) {
+            setDescriptor(this, uid, {
+              enumerable: false,
+              configurable: true,
+              writable: true,
+              value: value
+            });
+            addInternalIfNeeded(this, uid, true);
+          }
+        };
+        defineProperty(ObjectProto, uid, descriptor);
+        return source[uid] = defineProperty(Object(uid), 'constructor', sourceConstructor);
+      },
+          _Symbol = function _Symbol2(description) {
+        if (this && this !== G) {
+          throw new TypeError('Symbol is not a constructor');
         }
-      }))[prefix] || defineProperty;
-    } catch (o_O) {
-      setDescriptor = function setDescriptor(o, key, descriptor) {
-        var protoDescriptor = gOPD(ObjectProto, key);
-        delete ObjectProto[key];
-        defineProperty(o, key, descriptor);
-        defineProperty(ObjectProto, key, protoDescriptor);
+        return setAndGetSymbol(prefix.concat(description || '', random, ++id));
+      },
+          source = create(null),
+          sourceConstructor = { value: _Symbol },
+          sourceMap = function sourceMap(uid) {
+        return source[uid];
+      },
+          $defineProperty = function defineProp(o, key, descriptor) {
+        var uid = '' + key;
+        if (onlySymbols(uid)) {
+          setDescriptor(o, uid, descriptor.enumerable ? copyAsNonEnumerable(descriptor) : descriptor);
+          addInternalIfNeeded(o, uid, !!descriptor.enumerable);
+        } else {
+          defineProperty(o, key, descriptor);
+        }
+        return o;
+      },
+          $getOwnPropertySymbols = function getOwnPropertySymbols(o) {
+        var cof = toString.call(o);
+        o = cof === '[object String]' ? o.split('') : Object(o);
+        return gOPN(o).filter(onlySymbols).map(sourceMap);
       };
-    }
-  })(Object, 'getOwnPropertySymbols');
 
-  (function (O, S) {
-    var dP = O.defineProperty,
-        ObjectProto = O.prototype,
-        toString = ObjectProto.toString,
-        toStringTag = 'toStringTag',
-        descriptor;
-    ['iterator', 'match', 'replace', 'search', 'split', 'hasInstance', 'isConcatSpreadable', 'unscopables', 'species', 'toPrimitive', toStringTag].forEach(function (name) {
-      if (!(name in Symbol)) {
-        dP(Symbol, name, { value: Symbol(name) });
-        switch (name) {
-          case toStringTag:
-            descriptor = O.getOwnPropertyDescriptor(ObjectProto, 'toString');
-            descriptor.value = function () {
-              var str = toString.call(this),
-                  tst = typeof this === 'undefined' || this === null ? undefined : this[Symbol.toStringTag];
-              return typeof tst === 'undefined' ? str : '[object ' + tst + ']';
-            };
-            dP(ObjectProto, 'toString', descriptor);
-            break;
+      descriptor.value = $defineProperty;
+      defineProperty(Object, DP, descriptor);
+
+      descriptor.value = $getOwnPropertySymbols;
+      defineProperty(Object, GOPS, descriptor);
+
+      descriptor.value = function getOwnPropertyNames(o) {
+        return gOPN(o).filter(onlyNonSymbols);
+      };
+      defineProperty(Object, GOPN, descriptor);
+
+      descriptor.value = function defineProperties(o, descriptors) {
+        var symbols = $getOwnPropertySymbols(descriptors);
+        if (symbols.length) {
+          keys(descriptors).concat(symbols).forEach(function (uid) {
+            if (propertyIsEnumerable.call(descriptors, uid)) {
+              $defineProperty(o, uid, descriptors[uid]);
+            }
+          });
+        } else {
+          $defineProperties(o, descriptors);
         }
+        return o;
+      };
+      defineProperty(Object, DPies, descriptor);
+
+      descriptor.value = propertyIsEnumerable;
+      defineProperty(ObjectProto, PIE, descriptor);
+
+      descriptor.value = _Symbol;
+      defineProperty(G, 'Symbol', descriptor);
+
+      descriptor.value = function (key) {
+        var uid = prefix.concat(prefix, key, random);
+        return uid in ObjectProto ? source[uid] : setAndGetSymbol(uid);
+      };
+      defineProperty(_Symbol, 'for', descriptor);
+
+      descriptor.value = function (symbol) {
+        return hOP.call(source, symbol) ? symbol.slice(prefixLength * 2, -random.length) : void 0;
+      };
+      defineProperty(_Symbol, 'keyFor', descriptor);
+
+      descriptor.value = function getOwnPropertyDescriptor(o, key) {
+        var descriptor = gOPD(o, key);
+        if (descriptor && onlySymbols(key)) {
+          descriptor.enumerable = propertyIsEnumerable.call(o, key);
+        }
+        return descriptor;
+      };
+      defineProperty(Object, GOPD, descriptor);
+
+      descriptor.value = function (proto, descriptors) {
+        return arguments.length === 1 ? create(proto) : createWithSymbols(proto, descriptors);
+      };
+      defineProperty(Object, 'create', descriptor);
+
+      descriptor.value = function () {
+        var str = toString.call(this);
+        return str === '[object String]' && onlySymbols(this) ? '[object Symbol]' : str;
+      };
+      defineProperty(ObjectProto, 'toString', descriptor);
+
+      try {
+        setDescriptor = create(defineProperty({}, prefix, {
+          get: function get() {
+            return defineProperty(this, prefix, { value: false })[prefix];
+          }
+        }))[prefix] || defineProperty;
+      } catch (o_O) {
+        setDescriptor = function setDescriptor(o, key, descriptor) {
+          var protoDescriptor = gOPD(ObjectProto, key);
+          delete ObjectProto[key];
+          defineProperty(o, key, descriptor);
+          defineProperty(ObjectProto, key, protoDescriptor);
+        };
       }
-    });
-  })(Object, Symbol);
+    })(Object, 'getOwnPropertySymbols');
 
-  (function (Si, AP, SP) {
-
-    function returnThis() {
-      return this;
-    }
-
-    if (!AP[Si]) AP[Si] = function () {
-      var i = 0,
-          self = this,
-          iterator = {
-        next: function next() {
-          var done = self.length <= i;
-          return done ? { done: done } : { done: done, value: self[i++] };
+    (function (O, S) {
+      var dP = O.defineProperty,
+          ObjectProto = O.prototype,
+          toString = ObjectProto.toString,
+          toStringTag = 'toStringTag',
+          descriptor;
+      ['iterator', 'match', 'replace', 'search', 'split', 'hasInstance', 'isConcatSpreadable', 'unscopables', 'species', 'toPrimitive', toStringTag].forEach(function (name) {
+        if (!(name in Symbol)) {
+          dP(Symbol, name, { value: Symbol(name) });
+          switch (name) {
+            case toStringTag:
+              descriptor = O.getOwnPropertyDescriptor(ObjectProto, 'toString');
+              descriptor.value = function () {
+                var str = toString.call(this),
+                    tst = typeof this === 'undefined' || this === null ? undefined : this[Symbol.toStringTag];
+                return typeof tst === 'undefined' ? str : '[object ' + tst + ']';
+              };
+              dP(ObjectProto, 'toString', descriptor);
+              break;
+          }
         }
+      });
+    })(Object, Symbol);
+
+    (function (Si, AP, SP) {
+
+      function returnThis() {
+        return this;
+      }
+
+      if (!AP[Si]) AP[Si] = function () {
+        var i = 0,
+            self = this,
+            iterator = {
+          next: function next() {
+            var done = self.length <= i;
+            return done ? { done: done } : { done: done, value: self[i++] };
+          }
+        };
+        iterator[Si] = returnThis;
+        return iterator;
       };
-      iterator[Si] = returnThis;
-      return iterator;
+
+      if (!SP[Si]) SP[Si] = function () {
+        var fromCodePoint = String.fromCodePoint,
+            self = this,
+            i = 0,
+            length = self.length,
+            iterator = {
+          next: function next() {
+            var done = length <= i,
+                c = done ? '' : fromCodePoint(self.codePointAt(i));
+            i += c.length;
+            return done ? { done: done } : { done: done, value: c };
+          }
+        };
+        iterator[Si] = returnThis;
+        return iterator;
+      };
+    })(Symbol.iterator, Array.prototype, String.prototype);
+  }
+
+  if (typeof FEATURE_NO_ES2015 === 'undefined') {
+
+    Number.isNaN = Number.isNaN || function (value) {
+      return value !== value;
     };
 
-    if (!SP[Si]) SP[Si] = function () {
-      var fromCodePoint = String.fromCodePoint,
-          self = this,
-          i = 0,
-          length = self.length,
-          iterator = {
-        next: function next() {
-          var done = length <= i,
-              c = done ? '' : fromCodePoint(self.codePointAt(i));
-          i += c.length;
-          return done ? { done: done } : { done: done, value: c };
-        }
-      };
-      iterator[Si] = returnThis;
-      return iterator;
+    Number.isFinite = Number.isFinite || function (value) {
+      return typeof value === "number" && isFinite(value);
     };
-  })(Symbol.iterator, Array.prototype, String.prototype);
+  }
 
-  Number.isNaN = Number.isNaN || function (value) {
-    return value !== value;
-  };
-
-  Number.isFinite = Number.isFinite || function (value) {
-    return typeof value === "number" && isFinite(value);
-  };
   if (!String.prototype.endsWith || function () {
     try {
       return !"ab".endsWith("a", 1);
@@ -15373,109 +15611,112 @@ define('aurelia-polyfills',['aurelia-pal'], function (_aureliaPal) {
     };
   }
 
-  if (!Array.from) {
-    Array.from = function () {
-      var toInteger = function toInteger(it) {
-        return isNaN(it = +it) ? 0 : (it > 0 ? Math.floor : Math.ceil)(it);
-      };
-      var toLength = function toLength(it) {
-        return it > 0 ? Math.min(toInteger(it), 0x1fffffffffffff) : 0;
-      };
-      var iterCall = function iterCall(iter, fn, val, index) {
-        try {
-          return fn(val, index);
-        } catch (E) {
-          if (typeof iter.return == 'function') iter.return();
-          throw E;
-        }
-      };
+  if (typeof FEATURE_NO_ES2015 === 'undefined') {
 
-      return function from(arrayLike) {
-        var O = Object(arrayLike),
-            C = typeof this == 'function' ? this : Array,
-            aLen = arguments.length,
-            mapfn = aLen > 1 ? arguments[1] : undefined,
-            mapping = mapfn !== undefined,
-            index = 0,
-            iterFn = O[Symbol.iterator],
-            length,
-            result,
-            step,
-            iterator;
-        if (mapping) mapfn = mapfn.bind(aLen > 2 ? arguments[2] : undefined);
-        if (iterFn != undefined && !Array.isArray(arrayLike)) {
-          for (iterator = iterFn.call(O), result = new C(); !(step = iterator.next()).done; index++) {
-            result[index] = mapping ? iterCall(iterator, mapfn, step.value, index) : step.value;
+    if (!Array.from) {
+      Array.from = function () {
+        var toInteger = function toInteger(it) {
+          return isNaN(it = +it) ? 0 : (it > 0 ? Math.floor : Math.ceil)(it);
+        };
+        var toLength = function toLength(it) {
+          return it > 0 ? Math.min(toInteger(it), 0x1fffffffffffff) : 0;
+        };
+        var iterCall = function iterCall(iter, fn, val, index) {
+          try {
+            return fn(val, index);
+          } catch (E) {
+            if (typeof iter.return == 'function') iter.return();
+            throw E;
           }
-        } else {
-          length = toLength(O.length);
-          for (result = new C(length); length > index; index++) {
-            result[index] = mapping ? mapfn(O[index], index) : O[index];
+        };
+
+        return function from(arrayLike) {
+          var O = Object(arrayLike),
+              C = typeof this == 'function' ? this : Array,
+              aLen = arguments.length,
+              mapfn = aLen > 1 ? arguments[1] : undefined,
+              mapping = mapfn !== undefined,
+              index = 0,
+              iterFn = O[Symbol.iterator],
+              length,
+              result,
+              step,
+              iterator;
+          if (mapping) mapfn = mapfn.bind(aLen > 2 ? arguments[2] : undefined);
+          if (iterFn != undefined && !Array.isArray(arrayLike)) {
+            for (iterator = iterFn.call(O), result = new C(); !(step = iterator.next()).done; index++) {
+              result[index] = mapping ? iterCall(iterator, mapfn, step.value, index) : step.value;
+            }
+          } else {
+            length = toLength(O.length);
+            for (result = new C(length); length > index; index++) {
+              result[index] = mapping ? mapfn(O[index], index) : O[index];
+            }
           }
+          result.length = index;
+          return result;
+        };
+      }();
+    }
+
+    if (!Array.prototype.find) {
+      Object.defineProperty(Array.prototype, 'find', {
+        configurable: true,
+        writable: true,
+        enumerable: false,
+        value: function value(predicate) {
+          if (this === null) {
+            throw new TypeError('Array.prototype.find called on null or undefined');
+          }
+          if (typeof predicate !== 'function') {
+            throw new TypeError('predicate must be a function');
+          }
+          var list = Object(this);
+          var length = list.length >>> 0;
+          var thisArg = arguments[1];
+          var value;
+
+          for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+              return value;
+            }
+          }
+          return undefined;
         }
-        result.length = index;
-        return result;
-      };
-    }();
+      });
+    }
+
+    if (!Array.prototype.findIndex) {
+      Object.defineProperty(Array.prototype, 'findIndex', {
+        configurable: true,
+        writable: true,
+        enumerable: false,
+        value: function value(predicate) {
+          if (this === null) {
+            throw new TypeError('Array.prototype.findIndex called on null or undefined');
+          }
+          if (typeof predicate !== 'function') {
+            throw new TypeError('predicate must be a function');
+          }
+          var list = Object(this);
+          var length = list.length >>> 0;
+          var thisArg = arguments[1];
+          var value;
+
+          for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+              return i;
+            }
+          }
+          return -1;
+        }
+      });
+    }
   }
 
-  if (!Array.prototype.find) {
-    Object.defineProperty(Array.prototype, 'find', {
-      configurable: true,
-      writable: true,
-      enumerable: false,
-      value: function value(predicate) {
-        if (this === null) {
-          throw new TypeError('Array.prototype.find called on null or undefined');
-        }
-        if (typeof predicate !== 'function') {
-          throw new TypeError('predicate must be a function');
-        }
-        var list = Object(this);
-        var length = list.length >>> 0;
-        var thisArg = arguments[1];
-        var value;
-
-        for (var i = 0; i < length; i++) {
-          value = list[i];
-          if (predicate.call(thisArg, value, i, list)) {
-            return value;
-          }
-        }
-        return undefined;
-      }
-    });
-  }
-
-  if (!Array.prototype.findIndex) {
-    Object.defineProperty(Array.prototype, 'findIndex', {
-      configurable: true,
-      writable: true,
-      enumerable: false,
-      value: function value(predicate) {
-        if (this === null) {
-          throw new TypeError('Array.prototype.findIndex called on null or undefined');
-        }
-        if (typeof predicate !== 'function') {
-          throw new TypeError('predicate must be a function');
-        }
-        var list = Object(this);
-        var length = list.length >>> 0;
-        var thisArg = arguments[1];
-        var value;
-
-        for (var i = 0; i < length; i++) {
-          value = list[i];
-          if (predicate.call(thisArg, value, i, list)) {
-            return i;
-          }
-        }
-        return -1;
-      }
-    });
-  }
-
-  if (!Array.prototype.includes) {
+  if (typeof FEATURE_NO_ES2016 === 'undefined' && !Array.prototype.includes) {
     Object.defineProperty(Array.prototype, 'includes', {
       configurable: true,
       writable: true,
@@ -15509,377 +15750,394 @@ define('aurelia-polyfills',['aurelia-pal'], function (_aureliaPal) {
     });
   }
 
-  (function () {
-    var needsFix = false;
+  if (typeof FEATURE_NO_ES2015 === 'undefined') {
 
-    try {
-      var s = Object.keys('a');
-      needsFix = s.length !== 1 || s[0] !== '0';
-    } catch (e) {
-      needsFix = true;
-    }
+    (function () {
+      var needsFix = false;
 
-    if (needsFix) {
-      Object.keys = function () {
-        var hasOwnProperty = Object.prototype.hasOwnProperty,
-            hasDontEnumBug = !{ toString: null }.propertyIsEnumerable('toString'),
-            dontEnums = ['toString', 'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'constructor'],
-            dontEnumsLength = dontEnums.length;
+      try {
+        var s = Object.keys('a');
+        needsFix = s.length !== 1 || s[0] !== '0';
+      } catch (e) {
+        needsFix = true;
+      }
 
-        return function (obj) {
-          if (obj === undefined || obj === null) {
-            throw TypeError('Cannot convert undefined or null to object');
-          }
+      if (needsFix) {
+        Object.keys = function () {
+          var hasOwnProperty = Object.prototype.hasOwnProperty,
+              hasDontEnumBug = !{ toString: null }.propertyIsEnumerable('toString'),
+              dontEnums = ['toString', 'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'constructor'],
+              dontEnumsLength = dontEnums.length;
 
-          obj = Object(obj);
-
-          var result = [],
-              prop,
-              i;
-
-          for (prop in obj) {
-            if (hasOwnProperty.call(obj, prop)) {
-              result.push(prop);
+          return function (obj) {
+            if (obj === undefined || obj === null) {
+              throw TypeError('Cannot convert undefined or null to object');
             }
-          }
 
-          if (hasDontEnumBug) {
-            for (i = 0; i < dontEnumsLength; i++) {
-              if (hasOwnProperty.call(obj, dontEnums[i])) {
-                result.push(dontEnums[i]);
+            obj = Object(obj);
+
+            var result = [],
+                prop,
+                i;
+
+            for (prop in obj) {
+              if (hasOwnProperty.call(obj, prop)) {
+                result.push(prop);
               }
             }
-          }
 
-          return result;
-        };
-      }();
-    }
-  })();
-
-  (function (O) {
-    if ('assign' in O) {
-      return;
-    }
-
-    O.defineProperty(O, 'assign', {
-      configurable: true,
-      writable: true,
-      value: function () {
-        var gOPS = O.getOwnPropertySymbols,
-            pIE = O.propertyIsEnumerable,
-            filterOS = gOPS ? function (self) {
-          return gOPS(self).filter(pIE, self);
-        } : function () {
-          return Array.prototype;
-        };
-
-        return function assign(where) {
-          if (gOPS && !(where instanceof O)) {
-            console.warn('problematic Symbols', where);
-          }
-
-          function set(keyOrSymbol) {
-            where[keyOrSymbol] = arg[keyOrSymbol];
-          }
-
-          for (var i = 1, ii = arguments.length; i < ii; ++i) {
-            var arg = arguments[i];
-
-            if (arg === null || arg === undefined) {
-              continue;
+            if (hasDontEnumBug) {
+              for (i = 0; i < dontEnumsLength; i++) {
+                if (hasOwnProperty.call(obj, dontEnums[i])) {
+                  result.push(dontEnums[i]);
+                }
+              }
             }
 
-            O.keys(arg).concat(filterOS(arg)).forEach(set);
-          }
+            return result;
+          };
+        }();
+      }
+    })();
 
-          return where;
-        };
-      }()
-    });
-  })(Object);
-
-  (function (global) {
-    var i;
-
-    var defineProperty = Object.defineProperty,
-        is = function is(a, b) {
-      return a === b || a !== a && b !== b;
-    };
-
-    if (typeof WeakMap == 'undefined') {
-      global.WeakMap = createCollection({
-        'delete': sharedDelete,
-
-        clear: sharedClear,
-
-        get: sharedGet,
-
-        has: mapHas,
-
-        set: sharedSet
-      }, true);
-    }
-
-    if (typeof Map == 'undefined' || typeof new Map().values !== 'function' || !new Map().values().next) {
-      var _createCollection;
-
-      global.Map = createCollection((_createCollection = {
-        'delete': sharedDelete,
-
-        has: mapHas,
-
-        get: sharedGet,
-
-        set: sharedSet,
-
-        keys: sharedKeys,
-
-        values: sharedValues,
-
-        entries: mapEntries,
-
-        forEach: sharedForEach,
-
-        clear: sharedClear
-      }, _createCollection[Symbol.iterator] = mapEntries, _createCollection));
-    }
-
-    if (typeof Set == 'undefined' || typeof new Set().values !== 'function' || !new Set().values().next) {
-      var _createCollection2;
-
-      global.Set = createCollection((_createCollection2 = {
-        has: setHas,
-
-        add: sharedAdd,
-
-        'delete': sharedDelete,
-
-        clear: sharedClear,
-
-        keys: sharedValues,
-        values: sharedValues,
-
-        entries: setEntries,
-
-        forEach: sharedForEach
-      }, _createCollection2[Symbol.iterator] = sharedValues, _createCollection2));
-    }
-
-    if (typeof WeakSet == 'undefined') {
-      global.WeakSet = createCollection({
-        'delete': sharedDelete,
-
-        add: sharedAdd,
-
-        clear: sharedClear,
-
-        has: setHas
-      }, true);
-    }
-
-    function createCollection(proto, objectOnly) {
-      function Collection(a) {
-        if (!this || this.constructor !== Collection) return new Collection(a);
-        this._keys = [];
-        this._values = [];
-        this._itp = [];
-        this.objectOnly = objectOnly;
-
-        if (a) init.call(this, a);
+    (function (O) {
+      if ('assign' in O) {
+        return;
       }
 
-      if (!objectOnly) {
-        defineProperty(proto, 'size', {
-          get: sharedSize
-        });
-      }
+      O.defineProperty(O, 'assign', {
+        configurable: true,
+        writable: true,
+        value: function () {
+          var gOPS = O.getOwnPropertySymbols,
+              pIE = O.propertyIsEnumerable,
+              filterOS = gOPS ? function (self) {
+            return gOPS(self).filter(pIE, self);
+          } : function () {
+            return Array.prototype;
+          };
 
-      proto.constructor = Collection;
-      Collection.prototype = proto;
+          return function assign(where) {
+            if (gOPS && !(where instanceof O)) {
+              console.warn('problematic Symbols', where);
+            }
 
-      return Collection;
-    }
+            function set(keyOrSymbol) {
+              where[keyOrSymbol] = arg[keyOrSymbol];
+            }
 
-    function init(a) {
+            for (var i = 1, ii = arguments.length; i < ii; ++i) {
+              var arg = arguments[i];
+
+              if (arg === null || arg === undefined) {
+                continue;
+              }
+
+              O.keys(arg).concat(filterOS(arg)).forEach(set);
+            }
+
+            return where;
+          };
+        }()
+      });
+    })(Object);
+  }
+
+  if (typeof FEATURE_NO_ES2015 === 'undefined') {
+
+    (function (global) {
       var i;
 
-      if (this.add) a.forEach(this.add, this);else a.forEach(function (a) {
-          this.set(a[0], a[1]);
-        }, this);
-    }
-
-    function sharedDelete(key) {
-      if (this.has(key)) {
-        this._keys.splice(i, 1);
-        this._values.splice(i, 1);
-
-        this._itp.forEach(function (p) {
-          if (i < p[0]) p[0]--;
-        });
-      }
-
-      return -1 < i;
-    };
-
-    function sharedGet(key) {
-      return this.has(key) ? this._values[i] : undefined;
-    }
-
-    function has(list, key) {
-      if (this.objectOnly && key !== Object(key)) throw new TypeError("Invalid value used as weak collection key");
-
-      if (key != key || key === 0) for (i = list.length; i-- && !is(list[i], key);) {} else i = list.indexOf(key);
-      return -1 < i;
-    }
-
-    function setHas(value) {
-      return has.call(this, this._values, value);
-    }
-
-    function mapHas(value) {
-      return has.call(this, this._keys, value);
-    }
-
-    function sharedSet(key, value) {
-      this.has(key) ? this._values[i] = value : this._values[this._keys.push(key) - 1] = value;
-      return this;
-    }
-
-    function sharedAdd(value) {
-      if (!this.has(value)) this._values.push(value);
-      return this;
-    }
-
-    function sharedClear() {
-      (this._keys || 0).length = this._values.length = 0;
-    }
-
-    function sharedKeys() {
-      return sharedIterator(this._itp, this._keys);
-    }
-
-    function sharedValues() {
-      return sharedIterator(this._itp, this._values);
-    }
-
-    function mapEntries() {
-      return sharedIterator(this._itp, this._keys, this._values);
-    }
-
-    function setEntries() {
-      return sharedIterator(this._itp, this._values, this._values);
-    }
-
-    function sharedIterator(itp, array, array2) {
-      var _ref;
-
-      var p = [0],
-          done = false;
-      itp.push(p);
-      return _ref = {}, _ref[Symbol.iterator] = function () {
-        return this;
-      }, _ref.next = function next() {
-        var v,
-            k = p[0];
-        if (!done && k < array.length) {
-          v = array2 ? [array[k], array2[k]] : array[k];
-          p[0]++;
-        } else {
-          done = true;
-          itp.splice(itp.indexOf(p), 1);
-        }
-        return { done: done, value: v };
-      }, _ref;
-    }
-
-    function sharedSize() {
-      return this._values.length;
-    }
-
-    function sharedForEach(callback, context) {
-      var it = this.entries();
-      for (;;) {
-        var r = it.next();
-        if (r.done) break;
-        callback.call(context, r.value[1], r.value[0], this);
-      }
-    }
-  })(_aureliaPal.PLATFORM.global);
-
-  var emptyMetadata = Object.freeze({});
-  var metadataContainerKey = '__metadata__';
-  var bind = Function.prototype.bind;
-
-  if (typeof _aureliaPal.PLATFORM.global.Reflect === 'undefined') {
-    _aureliaPal.PLATFORM.global.Reflect = {};
-  }
-
-  if (typeof Reflect.getOwnMetadata !== 'function') {
-    Reflect.getOwnMetadata = function (metadataKey, target, targetKey) {
-      if (target.hasOwnProperty(metadataContainerKey)) {
-        return (target[metadataContainerKey][targetKey] || emptyMetadata)[metadataKey];
-      }
-    };
-  }
-
-  if (typeof Reflect.defineMetadata !== 'function') {
-    Reflect.defineMetadata = function (metadataKey, metadataValue, target, targetKey) {
-      var metadataContainer = target.hasOwnProperty(metadataContainerKey) ? target[metadataContainerKey] : target[metadataContainerKey] = {};
-      var targetContainer = metadataContainer[targetKey] || (metadataContainer[targetKey] = {});
-      targetContainer[metadataKey] = metadataValue;
-    };
-  }
-
-  if (typeof Reflect.metadata !== 'function') {
-    Reflect.metadata = function (metadataKey, metadataValue) {
-      return function (target, targetKey) {
-        Reflect.defineMetadata(metadataKey, metadataValue, target, targetKey);
+      var defineProperty = Object.defineProperty,
+          is = function is(a, b) {
+        return a === b || a !== a && b !== b;
       };
-    };
-  }
 
-  if (typeof Reflect.defineProperty !== 'function') {
-    Reflect.defineProperty = function (target, propertyKey, descriptor) {
-      if ((typeof target === 'undefined' ? 'undefined' : _typeof(target)) === 'object' ? target === null : typeof target !== 'function') {
-        throw new TypeError('Reflect.defineProperty called on non-object');
-      }
-      try {
-        Object.defineProperty(target, propertyKey, descriptor);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    };
-  }
+      if (typeof WeakMap == 'undefined') {
+        global.WeakMap = createCollection({
+          'delete': sharedDelete,
 
-  if (typeof Reflect.construct !== 'function') {
-    Reflect.construct = function (Target, args) {
-      if (args) {
-        switch (args.length) {
-          case 0:
-            return new Target();
-          case 1:
-            return new Target(args[0]);
-          case 2:
-            return new Target(args[0], args[1]);
-          case 3:
-            return new Target(args[0], args[1], args[2]);
-          case 4:
-            return new Target(args[0], args[1], args[2], args[3]);
+          clear: sharedClear,
+
+          get: sharedGet,
+
+          has: mapHas,
+
+          set: sharedSet
+        }, true);
+      }
+
+      if (typeof Map == 'undefined' || typeof new Map().values !== 'function' || !new Map().values().next) {
+        var _createCollection;
+
+        global.Map = createCollection((_createCollection = {
+          'delete': sharedDelete,
+
+          has: mapHas,
+
+          get: sharedGet,
+
+          set: sharedSet,
+
+          keys: sharedKeys,
+
+          values: sharedValues,
+
+          entries: mapEntries,
+
+          forEach: sharedForEach,
+
+          clear: sharedClear
+        }, _createCollection[Symbol.iterator] = mapEntries, _createCollection));
+      }
+
+      if (typeof Set == 'undefined' || typeof new Set().values !== 'function' || !new Set().values().next) {
+        var _createCollection2;
+
+        global.Set = createCollection((_createCollection2 = {
+          has: setHas,
+
+          add: sharedAdd,
+
+          'delete': sharedDelete,
+
+          clear: sharedClear,
+
+          keys: sharedValues,
+          values: sharedValues,
+
+          entries: setEntries,
+
+          forEach: sharedForEach
+        }, _createCollection2[Symbol.iterator] = sharedValues, _createCollection2));
+      }
+
+      if (typeof WeakSet == 'undefined') {
+        global.WeakSet = createCollection({
+          'delete': sharedDelete,
+
+          add: sharedAdd,
+
+          clear: sharedClear,
+
+          has: setHas
+        }, true);
+      }
+
+      function createCollection(proto, objectOnly) {
+        function Collection(a) {
+          if (!this || this.constructor !== Collection) return new Collection(a);
+          this._keys = [];
+          this._values = [];
+          this._itp = [];
+          this.objectOnly = objectOnly;
+
+          if (a) init.call(this, a);
+        }
+
+        if (!objectOnly) {
+          defineProperty(proto, 'size', {
+            get: sharedSize
+          });
+        }
+
+        proto.constructor = Collection;
+        Collection.prototype = proto;
+
+        return Collection;
+      }
+
+      function init(a) {
+        var i;
+
+        if (this.add) a.forEach(this.add, this);else a.forEach(function (a) {
+            this.set(a[0], a[1]);
+          }, this);
+      }
+
+      function sharedDelete(key) {
+        if (this.has(key)) {
+          this._keys.splice(i, 1);
+          this._values.splice(i, 1);
+
+          this._itp.forEach(function (p) {
+            if (i < p[0]) p[0]--;
+          });
+        }
+
+        return -1 < i;
+      };
+
+      function sharedGet(key) {
+        return this.has(key) ? this._values[i] : undefined;
+      }
+
+      function has(list, key) {
+        if (this.objectOnly && key !== Object(key)) throw new TypeError("Invalid value used as weak collection key");
+
+        if (key != key || key === 0) for (i = list.length; i-- && !is(list[i], key);) {} else i = list.indexOf(key);
+        return -1 < i;
+      }
+
+      function setHas(value) {
+        return has.call(this, this._values, value);
+      }
+
+      function mapHas(value) {
+        return has.call(this, this._keys, value);
+      }
+
+      function sharedSet(key, value) {
+        this.has(key) ? this._values[i] = value : this._values[this._keys.push(key) - 1] = value;
+        return this;
+      }
+
+      function sharedAdd(value) {
+        if (!this.has(value)) this._values.push(value);
+        return this;
+      }
+
+      function sharedClear() {
+        (this._keys || 0).length = this._values.length = 0;
+      }
+
+      function sharedKeys() {
+        return sharedIterator(this._itp, this._keys);
+      }
+
+      function sharedValues() {
+        return sharedIterator(this._itp, this._values);
+      }
+
+      function mapEntries() {
+        return sharedIterator(this._itp, this._keys, this._values);
+      }
+
+      function setEntries() {
+        return sharedIterator(this._itp, this._values, this._values);
+      }
+
+      function sharedIterator(itp, array, array2) {
+        var _ref;
+
+        var p = [0],
+            done = false;
+        itp.push(p);
+        return _ref = {}, _ref[Symbol.iterator] = function () {
+          return this;
+        }, _ref.next = function next() {
+          var v,
+              k = p[0];
+          if (!done && k < array.length) {
+            v = array2 ? [array[k], array2[k]] : array[k];
+            p[0]++;
+          } else {
+            done = true;
+            itp.splice(itp.indexOf(p), 1);
+          }
+          return { done: done, value: v };
+        }, _ref;
+      }
+
+      function sharedSize() {
+        return this._values.length;
+      }
+
+      function sharedForEach(callback, context) {
+        var it = this.entries();
+        for (;;) {
+          var r = it.next();
+          if (r.done) break;
+          callback.call(context, r.value[1], r.value[0], this);
         }
       }
-
-      var a = [null];
-      a.push.apply(a, args);
-      return new (bind.apply(Target, a))();
-    };
+    })(_aureliaPal.PLATFORM.global);
   }
 
-  if (typeof Reflect.ownKeys !== 'function') {
-    Reflect.ownKeys = function (o) {
-      return Object.getOwnPropertyNames(o).concat(Object.getOwnPropertySymbols(o));
-    };
+  if (typeof FEATURE_NO_ES2015 === 'undefined') {
+    (function () {
+
+      var bind = Function.prototype.bind;
+
+      if (typeof _aureliaPal.PLATFORM.global.Reflect === 'undefined') {
+        _aureliaPal.PLATFORM.global.Reflect = {};
+      }
+
+      if (typeof Reflect.defineProperty !== 'function') {
+        Reflect.defineProperty = function (target, propertyKey, descriptor) {
+          if ((typeof target === 'undefined' ? 'undefined' : _typeof(target)) === 'object' ? target === null : typeof target !== 'function') {
+            throw new TypeError('Reflect.defineProperty called on non-object');
+          }
+          try {
+            Object.defineProperty(target, propertyKey, descriptor);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        };
+      }
+
+      if (typeof Reflect.construct !== 'function') {
+        Reflect.construct = function (Target, args) {
+          if (args) {
+            switch (args.length) {
+              case 0:
+                return new Target();
+              case 1:
+                return new Target(args[0]);
+              case 2:
+                return new Target(args[0], args[1]);
+              case 3:
+                return new Target(args[0], args[1], args[2]);
+              case 4:
+                return new Target(args[0], args[1], args[2], args[3]);
+            }
+          }
+
+          var a = [null];
+          a.push.apply(a, args);
+          return new (bind.apply(Target, a))();
+        };
+      }
+
+      if (typeof Reflect.ownKeys !== 'function') {
+        Reflect.ownKeys = function (o) {
+          return Object.getOwnPropertyNames(o).concat(Object.getOwnPropertySymbols(o));
+        };
+      }
+    })();
+  }
+
+  if (typeof FEATURE_NO_ESNEXT === 'undefined') {
+    (function () {
+
+      var emptyMetadata = Object.freeze({});
+      var metadataContainerKey = '__metadata__';
+
+      if (typeof Reflect.getOwnMetadata !== 'function') {
+        Reflect.getOwnMetadata = function (metadataKey, target, targetKey) {
+          if (target.hasOwnProperty(metadataContainerKey)) {
+            return (target[metadataContainerKey][targetKey] || emptyMetadata)[metadataKey];
+          }
+        };
+      }
+
+      if (typeof Reflect.defineMetadata !== 'function') {
+        Reflect.defineMetadata = function (metadataKey, metadataValue, target, targetKey) {
+          var metadataContainer = target.hasOwnProperty(metadataContainerKey) ? target[metadataContainerKey] : target[metadataContainerKey] = {};
+          var targetContainer = metadataContainer[targetKey] || (metadataContainer[targetKey] = {});
+          targetContainer[metadataKey] = metadataValue;
+        };
+      }
+
+      if (typeof Reflect.metadata !== 'function') {
+        Reflect.metadata = function (metadataKey, metadataValue) {
+          return function (target, targetKey) {
+            Reflect.defineMetadata(metadataKey, metadataValue, target, targetKey);
+          };
+        };
+      }
+    })();
   }
 });
 define('aurelia-route-recognizer',['exports', 'aurelia-path'], function (exports, _aureliaPath) {
@@ -16693,23 +16951,36 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     NavigationInstruction.prototype.getBaseUrl = function getBaseUrl() {
+      var _this = this;
+
+      var fragment = this.fragment;
+
+      if (fragment === '') {
+        var nonEmptyRoute = this.router.routes.find(function (route) {
+          return route.name === _this.config.name && route.route !== '';
+        });
+        if (nonEmptyRoute) {
+          fragment = nonEmptyRoute.route;
+        }
+      }
+
       if (!this.params) {
-        return this.fragment;
+        return fragment;
       }
 
       var wildcardName = this.getWildCardName();
       var path = this.params[wildcardName] || '';
 
       if (!path) {
-        return this.fragment;
+        return fragment;
       }
 
       path = encodeURI(path);
-      return this.fragment.substr(0, this.fragment.lastIndexOf(path));
+      return fragment.substr(0, fragment.lastIndexOf(path));
     };
 
     NavigationInstruction.prototype._commitChanges = function _commitChanges(waitToSwap) {
-      var _this = this;
+      var _this2 = this;
 
       var router = this.router;
       router.currentInstruction = this;
@@ -16727,7 +16998,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
       var delaySwaps = [];
 
       var _loop = function _loop(viewPortName) {
-        var viewPortInstruction = _this.viewPortInstructions[viewPortName];
+        var viewPortInstruction = _this2.viewPortInstructions[viewPortName];
         var viewPort = router.viewPorts[viewPortName];
 
         if (!viewPort) {
@@ -16763,7 +17034,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
         });
         return null;
       }).then(function () {
-        return prune(_this);
+        return prune(_this2);
       });
     };
 
@@ -17171,7 +17442,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
 
   var Router = exports.Router = function () {
     function Router(container, history) {
-      var _this2 = this;
+      var _this3 = this;
 
       
 
@@ -17179,8 +17450,8 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
       this.options = {};
 
       this.transformTitle = function (title) {
-        if (_this2.parent) {
-          return _this2.parent.transformTitle(title);
+        if (_this3.parent) {
+          return _this3.parent.transformTitle(title);
         }
         return title;
       };
@@ -17191,20 +17462,22 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     }
 
     Router.prototype.reset = function reset() {
-      var _this3 = this;
+      var _this4 = this;
 
       this.viewPorts = {};
       this.routes = [];
       this.baseUrl = '';
       this.isConfigured = false;
       this.isNavigating = false;
+      this.isExplicitNavigation = false;
+      this.isExplicitNavigationBack = false;
       this.navigation = [];
       this.currentInstruction = null;
       this._fallbackOrder = 100;
       this._recognizer = new _aureliaRouteRecognizer.RouteRecognizer();
       this._childRecognizer = new _aureliaRouteRecognizer.RouteRecognizer();
       this._configuredPromise = new Promise(function (resolve) {
-        _this3._resolveConfiguredPromise = resolve;
+        _this4._resolveConfiguredPromise = resolve;
       });
     };
 
@@ -17218,7 +17491,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     Router.prototype.configure = function configure(callbackOrConfig) {
-      var _this4 = this;
+      var _this5 = this;
 
       this.isConfigured = true;
 
@@ -17234,9 +17507,9 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
           config = c;
         }
 
-        config.exportToRouter(_this4);
-        _this4.isConfigured = true;
-        _this4._resolveConfiguredPromise();
+        config.exportToRouter(_this5);
+        _this5.isConfigured = true;
+        _this5._resolveConfiguredPromise();
       });
     };
 
@@ -17245,6 +17518,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
         return this.parent.navigate(fragment, options);
       }
 
+      this.isExplicitNavigation = true;
       return this.history.navigate(_resolveUrl(fragment, this.baseUrl, this.history._hasPushState), options);
     };
 
@@ -17254,6 +17528,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     Router.prototype.navigateBack = function navigateBack() {
+      this.isExplicitNavigationBack = true;
       this.history.navigateBack();
     };
 
@@ -17361,14 +17636,14 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     Router.prototype.handleUnknownRoutes = function handleUnknownRoutes(config) {
-      var _this5 = this;
+      var _this6 = this;
 
       if (!config) {
         throw new Error('Invalid unknown route handler');
       }
 
       this.catchAllHandler = function (instruction) {
-        return _this5._createRouteConfig(config, instruction).then(function (c) {
+        return _this6._createRouteConfig(config, instruction).then(function (c) {
           instruction.config = c;
           return instruction;
         });
@@ -17464,7 +17739,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     Router.prototype._createRouteConfig = function _createRouteConfig(config, instruction) {
-      var _this6 = this;
+      var _this7 = this;
 
       return Promise.resolve(config).then(function (c) {
         if (typeof c === 'string') {
@@ -17478,10 +17753,10 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
         return typeof c === 'string' ? { moduleId: c } : c;
       }).then(function (c) {
         c.route = instruction.params.path;
-        validateRouteConfig(c, _this6.routes);
+        validateRouteConfig(c, _this7.routes);
 
         if (!c.navModel) {
-          c.navModel = _this6.createNavModel(c);
+          c.navModel = _this7.createNavModel(c);
         }
 
         return c;
@@ -17621,7 +17896,8 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
 
       if (_viewPortPlan.childNavigationInstruction) {
         findDeactivatable(_viewPortPlan.childNavigationInstruction.plan, callbackName, list);
-      } else if (prevComponent) {
+      }
+      if (prevComponent) {
         addPreviousDeactivatable(prevComponent, callbackName, list);
       }
     }
@@ -17944,10 +18220,10 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     }
 
     PipelineSlot.prototype.getSteps = function getSteps() {
-      var _this7 = this;
+      var _this8 = this;
 
       return this.steps.map(function (x) {
-        return _this7.container.get(x);
+        return _this8.container.get(x);
       });
     };
 
@@ -17967,11 +18243,11 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     }
 
     PipelineProvider.prototype.createPipeline = function createPipeline() {
-      var _this8 = this;
+      var _this9 = this;
 
       var pipeline = new Pipeline();
       this.steps.forEach(function (step) {
-        return pipeline.addStep(_this8.container.get(step));
+        return pipeline.addStep(_this9.container.get(step));
       });
       return pipeline;
     };
@@ -18035,11 +18311,11 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     function AppRouter(container, history, pipelineProvider, events) {
       
 
-      var _this9 = _possibleConstructorReturn(this, _Router.call(this, container, history));
+      var _this10 = _possibleConstructorReturn(this, _Router.call(this, container, history));
 
-      _this9.pipelineProvider = pipelineProvider;
-      _this9.events = events;
-      return _this9;
+      _this10.pipelineProvider = pipelineProvider;
+      _this10.events = events;
+      return _this10;
     }
 
     AppRouter.prototype.reset = function reset() {
@@ -18053,35 +18329,35 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     AppRouter.prototype.loadUrl = function loadUrl(url) {
-      var _this10 = this;
+      var _this11 = this;
 
       return this._createNavigationInstruction(url).then(function (instruction) {
-        return _this10._queueInstruction(instruction);
+        return _this11._queueInstruction(instruction);
       }).catch(function (error) {
         logger.error(error);
-        restorePreviousLocation(_this10);
+        restorePreviousLocation(_this11);
       });
     };
 
     AppRouter.prototype.registerViewPort = function registerViewPort(viewPort, name) {
-      var _this11 = this;
+      var _this12 = this;
 
       _Router.prototype.registerViewPort.call(this, viewPort, name);
 
       if (!this.isActive) {
         var _ret6 = function () {
-          var viewModel = _this11._findViewModel(viewPort);
+          var viewModel = _this12._findViewModel(viewPort);
           if ('configureRouter' in viewModel) {
-            if (!_this11.isConfigured) {
+            if (!_this12.isConfigured) {
               var _ret7 = function () {
-                var resolveConfiguredPromise = _this11._resolveConfiguredPromise;
-                _this11._resolveConfiguredPromise = function () {};
+                var resolveConfiguredPromise = _this12._resolveConfiguredPromise;
+                _this12._resolveConfiguredPromise = function () {};
                 return {
                   v: {
-                    v: _this11.configure(function (config) {
-                      return viewModel.configureRouter(config, _this11);
+                    v: _this12.configure(function (config) {
+                      return viewModel.configureRouter(config, _this12);
                     }).then(function () {
-                      _this11.activate();
+                      _this12.activate();
                       resolveConfiguredPromise();
                     })
                   }
@@ -18091,7 +18367,7 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
               if ((typeof _ret7 === 'undefined' ? 'undefined' : _typeof(_ret7)) === "object") return _ret7.v;
             }
           } else {
-            _this11.activate();
+            _this12.activate();
           }
         }();
 
@@ -18120,53 +18396,53 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
     };
 
     AppRouter.prototype._queueInstruction = function _queueInstruction(instruction) {
-      var _this12 = this;
+      var _this13 = this;
 
       return new Promise(function (resolve) {
         instruction.resolve = resolve;
-        _this12._queue.unshift(instruction);
-        _this12._dequeueInstruction();
+        _this13._queue.unshift(instruction);
+        _this13._dequeueInstruction();
       });
     };
 
     AppRouter.prototype._dequeueInstruction = function _dequeueInstruction() {
-      var _this13 = this;
+      var _this14 = this;
 
       var instructionCount = arguments.length <= 0 || arguments[0] === undefined ? 0 : arguments[0];
 
       return Promise.resolve().then(function () {
-        if (_this13.isNavigating && !instructionCount) {
+        if (_this14.isNavigating && !instructionCount) {
           return undefined;
         }
 
-        var instruction = _this13._queue.shift();
-        _this13._queue.length = 0;
+        var instruction = _this14._queue.shift();
+        _this14._queue.length = 0;
 
         if (!instruction) {
           return undefined;
         }
 
-        _this13.isNavigating = true;
-        instruction.previousInstruction = _this13.currentInstruction;
+        _this14.isNavigating = true;
+        instruction.previousInstruction = _this14.currentInstruction;
 
         if (!instructionCount) {
-          _this13.events.publish('router:navigation:processing', { instruction: instruction });
-        } else if (instructionCount === _this13.maxInstructionCount - 1) {
+          _this14.events.publish('router:navigation:processing', { instruction: instruction });
+        } else if (instructionCount === _this14.maxInstructionCount - 1) {
           logger.error(instructionCount + 1 + ' navigation instructions have been attempted without success. Restoring last known good location.');
-          restorePreviousLocation(_this13);
-          return _this13._dequeueInstruction(instructionCount + 1);
-        } else if (instructionCount > _this13.maxInstructionCount) {
+          restorePreviousLocation(_this14);
+          return _this14._dequeueInstruction(instructionCount + 1);
+        } else if (instructionCount > _this14.maxInstructionCount) {
           throw new Error('Maximum navigation attempts exceeded. Giving up.');
         }
 
-        var pipeline = _this13.pipelineProvider.createPipeline();
+        var pipeline = _this14.pipelineProvider.createPipeline();
 
         return pipeline.run(instruction).then(function (result) {
-          return processResult(instruction, result, instructionCount, _this13);
+          return processResult(instruction, result, instructionCount, _this14);
         }).catch(function (error) {
           return { output: error instanceof Error ? error : new Error(error) };
         }).then(function (result) {
-          return resolveInstruction(instruction, result, !!instructionCount, _this13);
+          return resolveInstruction(instruction, result, !!instructionCount, _this14);
         });
       });
     };
@@ -18224,9 +18500,12 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
   function resolveInstruction(instruction, result, isInnerInstruction, router) {
     instruction.resolve(result);
 
+    var eventArgs = { instruction: instruction, result: result };
     if (!isInnerInstruction) {
       router.isNavigating = false;
-      var eventArgs = { instruction: instruction, result: result };
+      router.isExplicitNavigation = false;
+      router.isExplicitNavigationBack = false;
+
       var eventName = void 0;
 
       if (result.output instanceof Error) {
@@ -18241,6 +18520,8 @@ define('aurelia-router',['exports', 'aurelia-logging', 'aurelia-route-recognizer
 
       router.events.publish('router:navigation:' + eventName, eventArgs);
       router.events.publish('router:navigation:complete', eventArgs);
+    } else {
+      router.events.publish('router:navigation:child:complete', eventArgs);
     }
 
     return result;
@@ -18267,7 +18548,15 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
 
   
 
+  var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+    return typeof obj;
+  } : function (obj) {
+    return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj;
+  };
+
   var hasSetImmediate = typeof setImmediate === 'function';
+  var stackSeparator = '\nEnqueued in TaskQueue by:\n';
+  var microStackSeparator = '\nEnqueued in MicroTaskQueue by:\n';
 
   function makeRequestFlushFromMutationObserver(flush) {
     var toggle = 1;
@@ -18293,7 +18582,11 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
     };
   }
 
-  function onError(error, task) {
+  function onError(error, task, longStacks) {
+    if (longStacks && task.stack && (typeof error === 'undefined' ? 'undefined' : _typeof(error)) === 'object' && error !== null) {
+      error.stack = filterFlushStack(error.stack) + task.stack;
+    }
+
     if ('onError' in task) {
       task.onError(error);
     } else if (hasSetImmediate) {
@@ -18314,6 +18607,7 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
       
 
       this.flushing = false;
+      this.longStacks = false;
 
       this.microTaskQueue = [];
       this.microTaskQueueCapacity = 1024;
@@ -18339,6 +18633,9 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
         this.requestFlushMicroTaskQueue();
       }
 
+      if (this.longStacks) {
+        task.stack = this.prepareQueueStack(microStackSeparator);
+      }
       this.microTaskQueue.push(task);
     };
 
@@ -18347,6 +18644,9 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
         this.requestFlushTaskQueue();
       }
 
+      if (this.longStacks) {
+        task.stack = this.prepareQueueStack(stackSeparator);
+      }
       this.taskQueue.push(task);
     };
 
@@ -18361,11 +18661,14 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
         this.flushing = true;
         while (index < queue.length) {
           task = queue[index];
+          if (this.longStacks) {
+            this.stack = typeof task.stack === 'string' ? task.stack : undefined;
+          }
           task.call();
           index++;
         }
       } catch (error) {
-        onError(error, task);
+        onError(error, task, this.longStacks);
       } finally {
         this.flushing = false;
       }
@@ -18381,6 +18684,9 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
         this.flushing = true;
         while (index < queue.length) {
           task = queue[index];
+          if (this.longStacks) {
+            this.stack = typeof task.stack === 'string' ? task.stack : undefined;
+          }
           task.call();
           index++;
 
@@ -18394,7 +18700,7 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
           }
         }
       } catch (error) {
-        onError(error, task);
+        onError(error, task, this.longStacks);
       } finally {
         this.flushing = false;
       }
@@ -18402,8 +18708,46 @@ define('aurelia-task-queue',['exports', 'aurelia-pal'], function (exports, _aure
       queue.length = 0;
     };
 
+    TaskQueue.prototype.prepareQueueStack = function prepareQueueStack(separator) {
+      var stack = separator + filterQueueStack(captureStack());
+      if (typeof this.stack === 'string') {
+        stack = filterFlushStack(stack) + this.stack;
+      }
+      return stack;
+    };
+
     return TaskQueue;
   }();
+
+  function captureStack() {
+    var error = new Error();
+
+    if (error.stack) {
+      return error.stack;
+    }
+
+    try {
+      throw error;
+    } catch (e) {
+      return e.stack;
+    }
+  }
+
+  function filterQueueStack(stack) {
+    return stack.replace(/^[\s\S]*?\bqueue(Micro)?Task\b[^\n]*\n/, '');
+  }
+
+  function filterFlushStack(stack) {
+    var index = stack.lastIndexOf('flushMicroTaskQueue');
+    if (index < 0) {
+      index = stack.lastIndexOf('flushTaskQueue');
+      if (index < 0) {
+        return stack;
+      }
+    }
+    index = stack.lastIndexOf('\n', index);
+    return index < 0 ? stack : stack.substr(0, index);
+  }
 });
 define('aurelia-templating',['exports', 'aurelia-logging', 'aurelia-metadata', 'aurelia-pal', 'aurelia-path', 'aurelia-loader', 'aurelia-dependency-injection', 'aurelia-binding', 'aurelia-task-queue'], function (exports, _aureliaLogging, _aureliaMetadata, _aureliaPal, _aureliaPath, _aureliaLoader, _aureliaDependencyInjection, _aureliaBinding, _aureliaTaskQueue) {
   'use strict';
@@ -26993,4 +27337,4 @@ define('aurelia-testing/component-tester',['exports', 'aurelia-templating', 'aur
     return ComponentTester;
   }();
 });
-function _aureliaConfigureModuleLoader(){requirejs.config({"baseUrl":"src/","paths":{"aurelia-binding":"..\\node_modules\\aurelia-binding\\dist\\amd\\aurelia-binding","aurelia-bootstrapper":"..\\node_modules\\aurelia-bootstrapper\\dist\\amd\\aurelia-bootstrapper","aurelia-dependency-injection":"..\\node_modules\\aurelia-dependency-injection\\dist\\amd\\aurelia-dependency-injection","aurelia-history":"..\\node_modules\\aurelia-history\\dist\\amd\\aurelia-history","aurelia-framework":"..\\node_modules\\aurelia-framework\\dist\\amd\\aurelia-framework","aurelia-history-browser":"..\\node_modules\\aurelia-history-browser\\dist\\amd\\aurelia-history-browser","aurelia-logging":"..\\node_modules\\aurelia-logging\\dist\\amd\\aurelia-logging","aurelia-event-aggregator":"..\\node_modules\\aurelia-event-aggregator\\dist\\amd\\aurelia-event-aggregator","aurelia-logging-console":"..\\node_modules\\aurelia-logging-console\\dist\\amd\\aurelia-logging-console","aurelia-metadata":"..\\node_modules\\aurelia-metadata\\dist\\amd\\aurelia-metadata","aurelia-loader-default":"..\\node_modules\\aurelia-loader-default\\dist\\amd\\aurelia-loader-default","aurelia-pal-browser":"..\\node_modules\\aurelia-pal-browser\\dist\\amd\\aurelia-pal-browser","aurelia-pal":"..\\node_modules\\aurelia-pal\\dist\\amd\\aurelia-pal","aurelia-path":"..\\node_modules\\aurelia-path\\dist\\amd\\aurelia-path","aurelia-polyfills":"..\\node_modules\\aurelia-polyfills\\dist\\amd\\aurelia-polyfills","aurelia-route-recognizer":"..\\node_modules\\aurelia-route-recognizer\\dist\\amd\\aurelia-route-recognizer","aurelia-router":"..\\node_modules\\aurelia-router\\dist\\amd\\aurelia-router","aurelia-templating":"..\\node_modules\\aurelia-templating\\dist\\amd\\aurelia-templating","aurelia-templating-binding":"..\\node_modules\\aurelia-templating-binding\\dist\\amd\\aurelia-templating-binding","aurelia-task-queue":"..\\node_modules\\aurelia-task-queue\\dist\\amd\\aurelia-task-queue","text":"..\\node_modules\\text\\text","aurelia-loader":"..\\node_modules\\aurelia-loader\\dist\\amd\\aurelia-loader","app-bundle":"../scripts/app-bundle"},"packages":[{"name":"aurelia-templating-resources","location":"../node_modules/aurelia-templating-resources/dist/amd","main":"aurelia-templating-resources"},{"name":"aurelia-templating-router","location":"../node_modules/aurelia-templating-router/dist/amd","main":"aurelia-templating-router"},{"name":"aurelia-testing","location":"../node_modules/aurelia-testing/dist/amd","main":"aurelia-testing"}],"stubModules":["text"],"shim":{},"bundles":{"app-bundle":["app","environment","main","searchword","resources/index"]}})}
+function _aureliaConfigureModuleLoader(){requirejs.config({"baseUrl":"src/","paths":{"aurelia-bootstrapper":"..\\node_modules\\aurelia-bootstrapper\\dist\\amd\\aurelia-bootstrapper","aurelia-framework":"..\\node_modules\\aurelia-framework\\dist\\amd\\aurelia-framework","aurelia-binding":"..\\node_modules\\aurelia-binding\\dist\\amd\\aurelia-binding","aurelia-dependency-injection":"..\\node_modules\\aurelia-dependency-injection\\dist\\amd\\aurelia-dependency-injection","aurelia-fetch-client":"..\\node_modules\\aurelia-fetch-client\\dist\\amd\\aurelia-fetch-client","aurelia-event-aggregator":"..\\node_modules\\aurelia-event-aggregator\\dist\\amd\\aurelia-event-aggregator","aurelia-loader-default":"..\\node_modules\\aurelia-loader-default\\dist\\amd\\aurelia-loader-default","aurelia-loader":"..\\node_modules\\aurelia-loader\\dist\\amd\\aurelia-loader","aurelia-logging":"..\\node_modules\\aurelia-logging\\dist\\amd\\aurelia-logging","aurelia-logging-console":"..\\node_modules\\aurelia-logging-console\\dist\\amd\\aurelia-logging-console","aurelia-history":"..\\node_modules\\aurelia-history\\dist\\amd\\aurelia-history","aurelia-pal-browser":"..\\node_modules\\aurelia-pal-browser\\dist\\amd\\aurelia-pal-browser","aurelia-metadata":"..\\node_modules\\aurelia-metadata\\dist\\amd\\aurelia-metadata","aurelia-path":"..\\node_modules\\aurelia-path\\dist\\amd\\aurelia-path","aurelia-router":"..\\node_modules\\aurelia-router\\dist\\amd\\aurelia-router","aurelia-polyfills":"..\\node_modules\\aurelia-polyfills\\dist\\amd\\aurelia-polyfills","aurelia-pal":"..\\node_modules\\aurelia-pal\\dist\\amd\\aurelia-pal","aurelia-templating":"..\\node_modules\\aurelia-templating\\dist\\amd\\aurelia-templating","aurelia-templating-binding":"..\\node_modules\\aurelia-templating-binding\\dist\\amd\\aurelia-templating-binding","aurelia-route-recognizer":"..\\node_modules\\aurelia-route-recognizer\\dist\\amd\\aurelia-route-recognizer","text":"..\\node_modules\\text\\text","aurelia-task-queue":"..\\node_modules\\aurelia-task-queue\\dist\\amd\\aurelia-task-queue","aurelia-history-browser":"..\\node_modules\\aurelia-history-browser\\dist\\amd\\aurelia-history-browser","app-bundle":"../scripts/app-bundle"},"packages":[{"name":"aurelia-templating-resources","location":"../node_modules/aurelia-templating-resources/dist/amd","main":"aurelia-templating-resources"},{"name":"aurelia-testing","location":"../node_modules/aurelia-testing/dist/amd","main":"aurelia-testing"},{"name":"aurelia-templating-router","location":"../node_modules/aurelia-templating-router/dist/amd","main":"aurelia-templating-router"}],"stubModules":["text"],"shim":{},"bundles":{"app-bundle":["app","environment","main","searchword","testCall","resources/index","model/configuration"]}})}

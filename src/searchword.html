@@ -1,3 +1,12 @@
 <template>
   <h1>Buscar palabra</h1>
+  <div>
+    Caracteres (>3):
+    <input value.bind="word">
+  </div>
+  <div>
+    <ul>
+      <li repeat.for="item of words">${item.word}</li>
+    </ul>
+  </div>
 </template>

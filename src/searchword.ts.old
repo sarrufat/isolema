@@ -1,25 +1,20 @@
+import 'whatwg-fetch';
 
-import { HttpClient } from 'aurelia-fetch-client';
-import { bindable, autoinject } from 'aurelia-framework';
+import { HttpClient } from 'aurelia-http-client';
 
-@autoinject
+import { bindable } from 'aurelia-framework';
+
+
+
 export class SearchWord {
     @bindable
     word: string = '123';
     private httpClient: HttpClient;
-    words: any = [ ];
 
-    constructor(httpClient: HttpClient) {
-        this.httpClient = httpClient;
-        //    this.httpClient = new HttpClient();
-        this.httpClient.configure((config) => {
-            config.withBaseUrl('/api/v1/isolema/wordLike/')
-                .withDefaults({
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'Fetch'
-                    }
-                })
+    constructor() {
+        this.httpClient = new HttpClient();
+      /*  this.httpClient.configure((config) => {
+            config.withBaseUrl('http://localhost:3000/api/v1/isolema/wordLike')
                 .withInterceptor({
                     request(request) {
                         console.log(`Requesting ${request.method} ${request.url}`);
@@ -30,15 +25,14 @@ export class SearchWord {
                         return response; // you can return a modified Response
                     }
                 });
-        });
+        });*/
     }
     public wordChanged(newValue: string, oldValue: string) {
         if (newValue.length > 3) {
-            this.httpClient.fetch(`${newValue}`)
-                .then(response => response.json())
-                .then(json => {
-                    this.words = json.words;
-                    console.log(json);
+            this.httpClient.get('package.json')
+                .then(response => response.response)
+                .then(data => {
+                    console.log(data.statusText);
                 });
         }
         console.log(`wordChanged(${newValue}, ${oldValue})`);
