@@ -9,13 +9,15 @@
   "license": "MIT",
   "dependencies": {
     "aurelia-animator-css": "^1.0.0",
+    "aurelia-bootstrap": "^0.1.15",
     "aurelia-bootstrapper": "^1.0.0",
     "aurelia-fetch-client": "^1.1.1",
     "bluebird": "^3.4.1",
     "bootstrap": "^3.3.7",
     "proxy-middleware": "^0.15.0",
     "requirejs": "^2.3.3",
-    "text": "github:requirejs/text#latest"
+    "text": "github:requirejs/text#latest",
+    "velocity-animate": "^1.4.3"
   },
   "peerDependencies": {},
   "devDependencies": {

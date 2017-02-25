@@ -4,6 +4,7 @@ import {inject, bindable} from 'aurelia-framework';
 @inject(HttpClient)
 export class SearchWord {
   @bindable word;
+  @bindable words;
   constructor(httpClient) {
     this.httpClient = httpClient;
     console.log(`httpClient = ${httpClient}`);
@@ -30,11 +31,19 @@ export class SearchWord {
   }
   wordChanged(newValue, oldValue) {
     if (newValue.length > 3) {
-      this.httpClient.fetch(`${newValue}`)
+      let subWord = newValue.toLowerCase();
+      this.httpClient.fetch(`${subWord}`)
         .then(response => response.json())
         .then(json => {
-          this.words = json.words;
-          console.log(json);
+          this.words = json.words.map( (aword) => {
+            let slen = subWord.length;
+            let pos = aword.word.search(subWord);
+            let prefix = aword.word.slice(0, pos);
+            let middle = aword.word.slice(pos, pos+slen)
+            let postix = aword.word.slice(pos+slen,  aword.word.length);
+            return { prefix: prefix, middle: middle, postix: postix}
+          });
+          console.log(this.words);
         });
     }
     console.log(`wordChanged(${newValue}, ${oldValue})`);

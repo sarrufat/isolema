@@ -17,7 +17,7 @@ export class App {
         name: 'searchword',
         moduleId: 'searchword',
         nav: true,
-        title: 'Busrcar palabra'
+        title: 'Busca palabra'
       }
     ]);
     config.mapUnknownRoutes('not-found');

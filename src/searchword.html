@@ -1,12 +1,14 @@
 <template>
   <h1>Buscar palabra</h1>
   <div>
-    Caracteres (>3):
-    <input value.bind="word">
-  </div>
-  <div>
-    <ul>
-      <li repeat.for="item of words">${item.word}</li>
-    </ul>
+    <div class="form-group">
+      <label for="iputWord" class="col-lg-2 control-label">Caracteres (>3)</label>
+      <input id="iputWord" value.bind="word" class="col-lg-2">
+    </div>
+    <div class="row">
+      <ul class="list-group">
+        <li repeat.for="item of words" class="list-group-item">${item.prefix}<mark>${item.middle}</mark>${item.postix}</li>
+      </ul>
+    </div>
   </div>
 </template>
