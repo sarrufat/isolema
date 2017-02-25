@@ -3,7 +3,11 @@ import {Project, ProjectItem, CLIOptions, UI} from 'aurelia-cli';
 
 @inject(Project, CLIOptions, UI)
 export default class TaskGenerator {
-  constructor(private project: Project, private options: CLIOptions, private ui: UI) { }
+  constructor(project, options, ui) {
+    this.project = project;
+    this.options = options;
+    this.ui = ui;
+  }
 
   execute() {
     return this.ui
@@ -13,7 +17,7 @@ export default class TaskGenerator {
         let functionName = this.project.makeFunctionName(name);
 
         this.project.tasks.add(
-          ProjectItem.text(`${fileName}.ts`, this.generateSource(functionName))
+          ProjectItem.text(`${fileName}.js`, this.generateSource(functionName))
         );
 
         return this.project.commitChanges()
@@ -22,9 +26,9 @@ export default class TaskGenerator {
   }
 
   generateSource(functionName) {
-return `import * as gulp from 'gulp';
-import * as changed from 'gulp-changed';
-import * as project from '../aurelia.json';
+    return `import gulp from 'gulp';
+import changed from 'gulp-changed';
+import project from '../aurelia.json';
 
 export default function ${functionName}() {
   return gulp.src(project.paths.???)
@@ -32,6 +36,6 @@ export default function ${functionName}() {
     .pipe(gulp.dest(project.paths.output));
 }
 
-`
+`;
   }
 }
