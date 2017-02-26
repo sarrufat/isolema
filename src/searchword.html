@@ -1,13 +1,13 @@
 <template>
   <h1>Buscar palabra</h1>
   <div>
-    <div class="form-group">
+    <div class="form-group row">
       <label for="iputWord" class="col-lg-2 control-label">Caracteres (>3)</label>
       <input id="iputWord" value.bind="word" class="col-lg-2">
     </div>
     <div class="row">
       <ul class="list-group">
-        <li repeat.for="item of words" class="list-group-item">${item.prefix}<mark>${item.middle}</mark>${item.postix}</li>
+        <li repeat.for="item of words" class="list-group-item">${item.prefix}<span class="label-info">${item.middle}</span>${item.postix}</li>
       </ul>
     </div>
   </div>
