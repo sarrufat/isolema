@@ -37,7 +37,7 @@ export class SearchWord {
         .then(json => {
           this.words = json.words.map( (aword) => {
             let slen = subWord.length;
-            let pos = aword.word.search(subWord);
+            let pos = aword.saoWord.search(subWord);
             let prefix = aword.word.slice(0, pos);
             let middle = aword.word.slice(pos, pos+slen)
             let postix = aword.word.slice(pos+slen,  aword.word.length);
