@@ -6,8 +6,10 @@
       <input id="iputWord" value.bind="word" class="col-lg-2">
     </div>
     <div class="row">
-      <ul class="list-group">
-        <li repeat.for="item of words" class="list-group-item">${item.prefix}<span class="label-info">${item.middle}</span>${item.postix}</li>
+      <ul class="list-group" style="list-style-type:none">
+        <li repeat.for="item of words" class="list-group-item">${item.prefix}<span class="label-info">${item.middle}</span>${item.postix}
+           <span class="badge">${item.isoCount}</span>
+        </li>
       </ul>
     </div>
   </div>
