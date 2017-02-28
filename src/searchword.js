@@ -41,11 +41,14 @@ export class SearchWord {
             let prefix = aword.word.slice(0, pos);
             let middle = aword.word.slice(pos, pos+slen)
             let postix = aword.word.slice(pos+slen,  aword.word.length);
-            return { prefix: prefix, middle: middle, postix: postix, isoCount: aword.isoCount}
+            return { word: aword.word , prefix: prefix, middle: middle, postix: postix, isoCount: aword.isoCount}
           });
           console.log(this.words);
         });
     }
     console.log(`wordChanged(${newValue}, ${oldValue})`);
+  }
+  showItem(item) {
+    console.log('showItem: ' + item);
   }
 }

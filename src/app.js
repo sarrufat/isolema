@@ -18,6 +18,13 @@ export class App {
         moduleId: 'searchword',
         nav: true,
         title: 'Busca palabra'
+      },
+      {
+        route: 'showIsomorphism',
+        name: 'showIsomorphism',
+        moduleId: 'showIsomorphism',
+        nav: true,
+        title: 'Isomorfismos'
       }
     ]);
     config.mapUnknownRoutes('not-found');
