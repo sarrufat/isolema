@@ -10,7 +10,7 @@ export class ShowIsomorphismGateway {
     this.httpClient = httpClient;
     console.log(`httpClient = ${httpClient}`);
     this.httpClient.configure((config) => {
-      config.withBaseUrl('/api/v1/isolema/isomorphisms/')
+      config.withBaseUrl('/api/v1/isolema/')
         .withDefaults({
           headers: {
             'Accept': 'application/json',
@@ -30,7 +30,7 @@ export class ShowIsomorphismGateway {
     });
   }
   getIsomorphisms(word) {
-      return this.httpClient.fetch(`${word}`)
+      return this.httpClient.fetch(`isomorphisms/${word}`)
       .then(response => response.json())
       .then(Isomorphisms.fromObject);
   }

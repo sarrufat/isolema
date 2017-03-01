@@ -17,6 +17,7 @@ export class ShowIsomorphism {
       return this.gateway.getIsomorphisms(params.word)
       .then(iso => {
         this.isomorphisms = iso;
+         config.navModel.setTitle(params.word);
           console.log("iso: " + JSON.stringify(iso));
       })
     }

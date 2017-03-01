@@ -10,7 +10,7 @@ export class SearchWord {
     console.log(`httpClient = ${httpClient}`);
     this.words = [];
     this.httpClient.configure((config) => {
-      config.withBaseUrl('/api/v1/isolema/wordLike/')
+      config.withBaseUrl('/api/v1/isolema/')
         .withDefaults({
           headers: {
             'Accept': 'application/json',
@@ -32,16 +32,17 @@ export class SearchWord {
   wordChanged(newValue, oldValue) {
     if (newValue.length > 3) {
       let subWord = newValue.toLowerCase();
-      this.httpClient.fetch(`${subWord}`)
+      this.httpClient.fetch(`wordLike/${subWord}`)
         .then(response => response.json())
         .then(json => {
           this.words = json.words.map( (aword) => {
             let slen = subWord.length;
-            let pos = aword.saoWord.search(subWord);
-            let prefix = aword.word.slice(0, pos);
-            let middle = aword.word.slice(pos, pos+slen)
-            let postix = aword.word.slice(pos+slen,  aword.word.length);
-            return { word: aword.word , prefix: prefix, middle: middle, postix: postix, isoCount: aword.isoCount}
+        //    let pos = aword.saoWord.search(subWord);
+        //    let pos = aword.saoWord.search(subWord);
+        //    let prefix = aword.word.slice(0, pos);
+        //    let middle = aword.word.slice(pos, pos+slen)
+        //    let postix = aword.word.slice(pos+slen,  aword.word.length);
+            return { word: aword.word , prefix: aword.word, middle: "", postix: "", isoCount: aword.isoCount}
           });
           console.log(this.words);
         });
