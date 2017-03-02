@@ -1,7 +1,11 @@
 <template>
   <div>
-    <h3>Isomorfismos de '${word}'</h3>
-    <div class="row">
+    <h3>${title}</h3>
+    <div margin-top: 5px;
+       margin-bottom: 5px;
+       margin-right: 5px;
+       margin-left: 5px;
+       >
       <ul class="list-group" style="list-style-type:none" with.bind="isomorphisms">
         <li repeat.for="iso of result" class="list-group-item">${iso.word}</li>
       </ul>

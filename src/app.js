@@ -17,7 +17,7 @@ export class App {
         name: 'searchword',
         moduleId: 'searchword',
         nav: true,
-        title: 'Busca palabra'
+        title: 'Buscar'
       },
       {
         route: 'showIsomorphism',

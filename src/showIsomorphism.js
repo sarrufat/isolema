@@ -5,6 +5,7 @@ import {ShowIsomorphismGateway} from './ShowIsomorphismGateway';
 @inject(ShowIsomorphismGateway)
 export class ShowIsomorphism {
   @bindable word;
+  @bindable title;
 
   constructor(gateway) {
       this.gateway = gateway;
@@ -17,7 +18,9 @@ export class ShowIsomorphism {
       return this.gateway.getIsomorphisms(params.word)
       .then(iso => {
         this.isomorphisms = iso;
-         config.navModel.setTitle(params.word);
+        if (iso.result.length > 0)
+        this.title = this.word + ' → ' +  iso.result[0].isocode;
+        // config.navModel.setTitle(params.word);
           console.log("iso: " + JSON.stringify(iso));
       })
     }
