@@ -1,3 +1,29 @@
 {
-  "extends": "./node_modules/aurelia-tools/.eslintrc.json"
+  "extends": "./node_modules/aurelia-tools/.eslintrc.json",
+  "plugins": [
+        "aurelia"
+    ],
+    "rules": {
+       "aurelia/inject-type": [2, "property"],
+       "aurelia/inject-matches-ctor": 2,
+       "aurelia/no-conventions": 0,
+       "aurelia/no-console-log": 0,
+       "aurelia/store-subscriptions": [0, {
+           "setTimeout": true,
+           "setInterval": true,
+           "subscribe": true
+       }],
+       "aurelia/sort-class-members": [0, {
+           "order": [
+               { "name": "metadata", "type": "method", "static": true },
+               "[static-properties]",
+               "[static-methods]",
+               "[properties]",
+               { "name": "inject", "static": true },
+               "constructor",
+               "[everything-else]",
+               "[lifecycle]",
+           ]
+       }]
+   }
 }
