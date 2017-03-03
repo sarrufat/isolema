@@ -10,7 +10,14 @@ export class App {
     config.title = 'Isomorfismos';
     config.map([{
         route: '',
-        redirect: 'searchword'
+        redirect: 'home'
+      },
+      {
+        route: 'home',
+        name: 'home',
+        moduleId: 'home',
+        nav: true,
+        title: 'Inicio'
       },
       {
         route: 'searchword',
