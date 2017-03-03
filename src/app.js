@@ -23,7 +23,7 @@ export class App {
         route: 'showIsomorphism',
         name: 'showIsomorphism',
         moduleId: 'showIsomorphism',
-        nav: true,
+        nav: false,
         title: 'Isomorfismos'
       }
     ]);
