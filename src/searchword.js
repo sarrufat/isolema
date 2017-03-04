@@ -1,5 +1,6 @@
 import {HttpClient} from 'aurelia-fetch-client';
 import {inject, bindable} from 'aurelia-framework';
+import {Mask} from './util/marks';
 
 @inject(HttpClient)
 export class SearchWord {
@@ -41,7 +42,7 @@ export class SearchWord {
             let prefix = aword.word.slice(0, pos);
             let middle = aword.word.slice(pos, pos+slen)
             let postix = aword.word.slice(pos+slen,  aword.word.length);
-            return { word: aword.word , prefix: prefix, middle: middle, postix: postix, isoCount: aword.isoCount}
+            return { word: aword.word , prefix: prefix, middle: middle, postix: postix, isoCount: aword.isoCount, spellingMark: Mask.toHtml(aword.word, aword.mask)}
           });
           console.log(this.words);
         });
@@ -50,5 +51,12 @@ export class SearchWord {
   }
   showItem(item) {
     console.log('showItem: ' + item);
+  }
+
+  activate(params, config) {
+    if (params.navFrom !== undefined) {
+      this.word = params.navFrom;
+      this.wordChanged(this.word, '');
+    }
   }
 }

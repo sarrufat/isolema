@@ -1,5 +1,6 @@
 <template>
   <div>
+    <a route-href="route: searchword; params.bind: { navFrom: navFrom }" class="btn btn-link">Volver</a>
     <h3>${title}</h3>
     <div margin-top: 5px;
        margin-bottom: 5px;
@@ -7,19 +8,12 @@
        margin-left: 5px;
        >
       <ul class="list-group" style="list-style-type:none" with.bind="isomorphisms">
-        <li repeat.for="iso of result" class="list-group-item">${iso.word}</li>
-      </ul>
-    </div>
-  <!--  <div class="form-group row">
-      <label for="iputWord" class="col-lg-2 control-label">Caracteres (>3)</label>
-      <input id="iputWord" value.bind="word" class="col-lg-2">
-    </div>
-    <div class="row">
-      <ul class="list-group" style="list-style-type:none">
-        <li repeat.for="item of words" class="list-group-item">${item.prefix}<span class="label-info">${item.middle}</span>${item.postix}
-           <span class="badge" show.bind="item.isoCount > 0"><a route-href="route: showIsomorphism; params.bind: { word: item.word }" class="btn-info">${item.isoCount}</a></span>
+        <li repeat.for="iso of result" class="list-group-item" >
+          <div class="alert alert-dismissible alert-info">
+            <span>${iso.word} →</span><span innerhtml.bind="iso.spellingMark"></span>
+          </div>
         </li>
       </ul>
-    </div> -->
+    </div>
   </div>
 </template>
